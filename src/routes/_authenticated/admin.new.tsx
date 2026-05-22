@@ -1,11 +1,19 @@
-import { createFileRoute, useNavigate, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 
 import { useEffect, useState } from "react";
 import { ArrowLeft, Upload } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { upsertEmployee, getEmployee } from "@/lib/employees.functions";
 import { employeeInputSchema } from "@/lib/employees.schema";
-import { slugify } from "@/lib/vcard";
+import { api } from "@/lib/api";
+
+function slugify(s: string) {
+  return s
+    .toLowerCase()
+    .trim()
+    .replace(/['"]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 type Mode = { kind: "new" } | { kind: "edit"; id: string };
 
