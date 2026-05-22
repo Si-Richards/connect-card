@@ -1,6 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PKPass } from "passkit-generator";
-import forge from "node-forge";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const ICON_PNG = "iVBORw0KGgoAAAANSUhEUgAAAB0AAAAdCAYAAABWk2cPAAAAL0lEQVR4nO3NQREAIAgAMKQATzrYv5+U8HhtBXaq74tluR1KpVKpVCqVSqVS6QcD4gQBiVHsscUAAAAASUVORK5CYII=";
@@ -43,8 +41,12 @@ export const Route = createFileRoute("/api/public/wallet/$slug")({
         const cardUrl = `${origin}/card/${encodeURIComponent(slug)}`;
 
         try {
-          const { signerCert, signerKey } = extractPassCertificate(p12Base64, p12Password);
-          const wwdr = certificateToPem(wwdrBase64);
+          const [{ PKPass }, forge] = await Promise.all([
+            import("passkit-generator"),
+            import("node-forge").then((m) => m.default),
+          ]);
+          const { signerCert, signerKey } = extractPassCertificate(forge, p12Base64, p12Password);
+          const wwdr = certificateToPem(forge, wwdrBase64);
 
           const pass = new PKPass(
             {},
@@ -126,7 +128,9 @@ export const Route = createFileRoute("/api/public/wallet/$slug")({
   },
 });
 
-function extractPassCertificate(p12Base64: string, password: string) {
+type ForgeModule = typeof import("node-forge");
+
+function extractPassCertificate(forge: ForgeModule, p12Base64: string, password: string) {
   const bytes = forge.util.createBuffer(Buffer.from(p12Base64, "base64").toString("binary"));
   const asn1 = forge.asn1.fromDer(bytes);
   const p12 = forge.pkcs12.pkcs12FromAsn1(asn1, false, password);
@@ -146,7 +150,7 @@ function extractPassCertificate(p12Base64: string, password: string) {
   };
 }
 
-function certificateToPem(base64Value: string): string {
+function certificateToPem(forge: ForgeModule, base64Value: string): string {
   const decoded = Buffer.from(base64Value, "base64");
   const text = decoded.toString("utf-8");
   if (text.includes("-----BEGIN CERTIFICATE-----")) return text;
