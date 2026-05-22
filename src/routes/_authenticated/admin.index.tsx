@@ -83,20 +83,23 @@ function AdminList() {
             <tr>
               <th className="px-4 py-2 font-medium">Name</th>
               <th className="px-4 py-2 font-medium">Slug</th>
-              <th className="px-4 py-2 font-medium">Views</th>
+              <th className="px-4 py-2 font-medium" title="All-time card views">Views</th>
+              <th className="px-4 py-2 font-medium" title="Last 30 days">30d views</th>
+              <th className="px-4 py-2 font-medium" title="QR scans, last 30 days">30d scans</th>
               <th className="px-4 py-2 font-medium">Status</th>
               <th className="px-4 py-2 font-medium text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {q.isLoading && (
-              <tr><td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">Loading…</td></tr>
+              <tr><td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">Loading…</td></tr>
             )}
             {!q.isLoading && employees.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">No employees yet.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">No employees yet.</td></tr>
             )}
             {employees.map((e: any) => {
               const cardUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/card/${e.slug}`;
+              const t = (totals as any)[e.id] ?? { views: 0, scans: 0 };
               return (
                 <tr key={e.id} className="border-t border-border">
                   <td className="px-4 py-3">
@@ -105,6 +108,8 @@ function AdminList() {
                   </td>
                   <td className="px-4 py-3 font-mono text-xs">{e.slug}</td>
                   <td className="px-4 py-3">{e.view_count}</td>
+                  <td className="px-4 py-3 tabular-nums">{t.views}</td>
+                  <td className="px-4 py-3 tabular-nums">{t.scans}</td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded ${e.disabled ? "bg-muted text-muted-foreground" : "bg-green-100 text-green-800"}`}>
                       {e.disabled ? "Disabled" : "Active"}
