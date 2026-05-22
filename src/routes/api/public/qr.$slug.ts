@@ -32,7 +32,7 @@ export const Route = createFileRoute("/api/public/qr/$slug")({
           });
         }
         const buf = await QRCode.toBuffer(target, { ...opts, type: "png" });
-        return new Response(buf, {
+        return new Response(new Uint8Array(buf), {
           headers: {
             "Content-Type": "image/png",
             "Cache-Control": "public, max-age=300",
