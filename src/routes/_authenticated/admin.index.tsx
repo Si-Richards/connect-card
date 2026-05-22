@@ -7,7 +7,6 @@ import {
   listEmployees,
   deleteEmployee,
   toggleEmployeeDisabled,
-  checkIsAdmin,
 } from "@/lib/employees.functions";
 import { listEmployeeAnalytics } from "@/lib/analytics.functions";
 
@@ -17,37 +16,18 @@ export const Route = createFileRoute("/_authenticated/admin/")({
 
 function AdminList() {
   const router = useRouter();
-  const listFn = listEmployees;
-  const delFn = deleteEmployee;
-  const toggleFn = toggleEmployeeDisabled;
-  const adminFn = checkIsAdmin;
-  const analyticsFn = listEmployeeAnalytics;
 
-  const adminQ = useQuery({ queryKey: ["isAdmin"], queryFn: () => adminFn({}) });
   const q = useQuery({
     queryKey: ["employees"],
-    queryFn: () => listFn({}),
-    enabled: adminQ.data?.isAdmin === true,
+    queryFn: () => listEmployees({}),
   });
   const analyticsQ = useQuery({
     queryKey: ["employee-analytics-30d"],
-    queryFn: () => analyticsFn({}),
-    enabled: adminQ.data?.isAdmin === true,
+    queryFn: () => listEmployeeAnalytics({}),
   });
   const totals = analyticsQ.data?.totals ?? {};
   const [search, setSearch] = useState("");
 
-  if (adminQ.isLoading) return <div className="p-6">Loading…</div>;
-  if (!adminQ.data?.isAdmin) {
-    return (
-      <div className="max-w-2xl mx-auto p-6 text-center">
-        <h1 className="text-xl font-semibold">Admin access required</h1>
-        <p className="text-muted-foreground mt-2">
-          Your account doesn't have the admin role. Ask an existing admin to grant it.
-        </p>
-      </div>
-    );
-  }
 
   const employees = (q.data?.employees ?? []).filter((e: any) =>
     !search || (e.full_name + " " + e.job_title + " " + e.email + " " + e.slug)
