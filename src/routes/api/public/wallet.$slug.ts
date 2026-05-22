@@ -126,6 +126,34 @@ export const Route = createFileRoute("/api/public/wallet/$slug")({
   },
 });
 
+function extractPassCertificate(p12Base64: string, password: string) {
+  const bytes = forge.util.createBuffer(Buffer.from(p12Base64, "base64").toString("binary"));
+  const asn1 = forge.asn1.fromDer(bytes);
+  const p12 = forge.pkcs12.pkcs12FromAsn1(asn1, false, password);
+  const certBag = p12.getBags({ bagType: forge.pki.oids.certBag })[forge.pki.oids.certBag]?.[0];
+  const keyBag =
+    p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[
+      forge.pki.oids.pkcs8ShroudedKeyBag
+    ]?.[0] ?? p12.getBags({ bagType: forge.pki.oids.keyBag })[forge.pki.oids.keyBag]?.[0];
+
+  if (!certBag?.cert || !keyBag?.key) {
+    throw new Error("Apple Pass certificate must contain both certificate and private key.");
+  }
+
+  return {
+    signerCert: forge.pki.certificateToPem(certBag.cert),
+    signerKey: forge.pki.privateKeyToPem(keyBag.key),
+  };
+}
+
+function certificateToPem(base64Value: string): string {
+  const decoded = Buffer.from(base64Value, "base64");
+  const text = decoded.toString("utf-8");
+  if (text.includes("-----BEGIN CERTIFICATE-----")) return text;
+  const certificate = forge.pki.certificateFromAsn1(forge.asn1.fromDer(decoded.toString("binary")));
+  return forge.pki.certificateToPem(certificate);
+}
+
 function hexToRgbString(hex: string): string {
   const m = hex.replace("#", "").match(/^([0-9a-f]{6})$/i);
   if (!m) return "rgb(15,23,42)";
