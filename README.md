@@ -22,6 +22,8 @@ Browser ──► TanStack Start SPA ──► Express REST API (/api/*) ──�
 - Apple Wallet (`.pkpass`) and Google Wallet pass generation (backend handles signing)
 - Scan/view analytics per employee
 
+> **Analytics note:** The frontend records `view` and `scan` events from `/card/:slug`. The selfhost backend MUST record `vcard_download` and `wallet_download` events server-side from `/api/public/vcard/:slug`, `/api/public/wallet/:slug`, and `/api/public/google-wallet/:slug` (insert an `events` row before returning the file). Otherwise the vCard and Wallet analytics columns will always be zero.
+
 ## Local development
 
 ```bash

@@ -2,7 +2,7 @@
  * Thin client wrappers around the self-hosted REST API. Keep the
  * `({ data })` calling shape so existing call sites work unchanged.
  */
-import { api, ApiError, type Employee } from "./api";
+import { api, type Employee } from "./api";
 
 type IdInput = { data: { id: string } };
 type UpsertInput = { data: { id?: string; values: Partial<Employee> } };
@@ -20,18 +20,3 @@ export const deleteEmployee = ({ data }: IdInput) => api.deleteEmployee(data.id)
 
 export const toggleEmployeeDisabled = ({ data }: ToggleInput) =>
   api.toggleEmployeeDisabled(data.id, data.disabled);
-
-/** Real admin check — calls /api/auth/me and reads the isAdmin flag. */
-export const checkIsAdmin = async (
-  _?: { data?: unknown },
-): Promise<{ isAdmin: boolean }> => {
-  try {
-    const { user } = await api.me();
-    return { isAdmin: Boolean(user?.isAdmin) };
-  } catch (err) {
-    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
-      return { isAdmin: false };
-    }
-    throw err;
-  }
-};
