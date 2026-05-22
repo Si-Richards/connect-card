@@ -1,15 +1,10 @@
-import { createFileRoute, redirect, Outlet, Link, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Outlet, Link, useRouter } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   pendingComponent: AuthPending,
-  beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) {
-      throw redirect({ to: "/login" });
-    }
-  },
   component: AuthLayout,
 });
 
@@ -23,6 +18,32 @@ function AuthPending() {
 
 function AuthLayout() {
   const router = useRouter();
+  const [authState, setAuthState] = useState<"checking" | "signed-in" | "signed-out">("checking");
+
+  useEffect(() => {
+    let cancelled = false;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthState(session?.user ? "signed-in" : "signed-out");
+    });
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!cancelled) setAuthState(data.session?.user ? "signed-in" : "signed-out");
+    }).catch(() => {
+      if (!cancelled) setAuthState("signed-out");
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (authState === "signed-out") router.navigate({ to: "/login" });
+  }, [authState, router]);
+
+  if (authState !== "signed-in") return <AuthPending />;
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
