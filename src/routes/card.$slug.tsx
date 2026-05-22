@@ -163,7 +163,7 @@ function CardPage() {
                 <Download className="w-4 h-4" />
                 Save to Contacts (vCard)
               </a>
-              <WalletButton slug={e.slug} brand={brand} />
+              <WalletButtons slug={e.slug} brand={brand} />
             </div>
 
             {/* Contact list */}
@@ -238,21 +238,37 @@ function ContactRow({
   );
 }
 
-function WalletButton({ slug, brand }: { slug: string; brand: string }) {
-  const [status, setStatus] = useState<"idle" | "loading" | "unavailable">("idle");
-  const url = `/api/public/wallet/${encodeURIComponent(slug)}`;
+function WalletButtons({ slug, brand }: { slug: string; brand: string }) {
+  const [available, setAvailable] = useState<{ apple: boolean; google: boolean } | null>(null);
+  const [appleStatus, setAppleStatus] = useState<"idle" | "loading">("idle");
 
-  const onClick = async (e: React.MouseEvent) => {
+  useEffect(() => {
+    fetch("/api/public/wallet-status")
+      .then((r) => (r.ok ? r.json() : { apple: false, google: false }))
+      .then(setAvailable)
+      .catch(() => setAvailable({ apple: false, google: false }));
+  }, []);
+
+  if (!available) return null;
+  if (!available.apple && !available.google) {
+    return (
+      <div className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm border border-border text-muted-foreground bg-muted/40">
+        <Wallet className="w-4 h-4" />
+        Wallet passes not configured yet
+      </div>
+    );
+  }
+
+  const appleUrl = `/api/public/wallet/${encodeURIComponent(slug)}`;
+  const googleUrl = `/api/public/google-wallet/${encodeURIComponent(slug)}`;
+
+  const onAppleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
-    setStatus("loading");
+    setAppleStatus("loading");
     try {
-      const res = await fetch(url);
-      if (res.status === 503) {
-        setStatus("unavailable");
-        return;
-      }
+      const res = await fetch(appleUrl);
       if (!res.ok) {
-        setStatus("unavailable");
+        setAppleStatus("idle");
         return;
       }
       const blob = await res.blob();
@@ -264,30 +280,35 @@ function WalletButton({ slug, brand }: { slug: string; brand: string }) {
       a.click();
       a.remove();
       URL.revokeObjectURL(objectUrl);
-      setStatus("idle");
-    } catch {
-      setStatus("unavailable");
+    } finally {
+      setAppleStatus("idle");
     }
   };
 
-  if (status === "unavailable") {
-    return (
-      <div className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm border border-border text-muted-foreground bg-muted/40">
-        <Wallet className="w-4 h-4" />
-        Apple Wallet not configured yet
-      </div>
-    );
-  }
-
   return (
-    <a
-      href={url}
-      onClick={onClick}
-      className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium border border-border hover:bg-muted/50 transition-colors"
-      style={{ borderColor: brand }}
-    >
-      <Wallet className="w-4 h-4" />
-      {status === "loading" ? "Preparing pass…" : "Add to Apple Wallet"}
-    </a>
+    <>
+      {available.apple && (
+        <a
+          href={appleUrl}
+          onClick={onAppleClick}
+          className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium border border-border hover:bg-muted/50 transition-colors"
+          style={{ borderColor: brand }}
+        >
+          <Wallet className="w-4 h-4" />
+          {appleStatus === "loading" ? "Preparing pass…" : "Add to Apple Wallet"}
+        </a>
+      )}
+      {available.google && (
+        <a
+          href={googleUrl}
+          className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium border border-border hover:bg-muted/50 transition-colors"
+          style={{ borderColor: brand }}
+        >
+          <Wallet className="w-4 h-4" />
+          Add to Google Wallet
+        </a>
+      )}
+    </>
   );
 }
+
