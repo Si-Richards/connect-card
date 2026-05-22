@@ -21,6 +21,7 @@ function AdminList() {
   const delFn = useServerFn(deleteEmployee);
   const toggleFn = useServerFn(toggleEmployeeDisabled);
   const adminFn = useServerFn(checkIsAdmin);
+  const analyticsFn = useServerFn(listEmployeeAnalytics);
 
   const adminQ = useQuery({ queryKey: ["isAdmin"], queryFn: () => adminFn({}) });
   const q = useQuery({
@@ -28,6 +29,12 @@ function AdminList() {
     queryFn: () => listFn({}),
     enabled: adminQ.data?.isAdmin === true,
   });
+  const analyticsQ = useQuery({
+    queryKey: ["employee-analytics-30d"],
+    queryFn: () => analyticsFn({}),
+    enabled: adminQ.data?.isAdmin === true,
+  });
+  const totals = analyticsQ.data?.totals ?? {};
   const [search, setSearch] = useState("");
 
   if (adminQ.isLoading) return <div className="p-6">Loading…</div>;
