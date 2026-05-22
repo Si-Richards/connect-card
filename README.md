@@ -1,55 +1,48 @@
-# CardKit — Digital Business Cards
+# Business Card
 
-Mobile-first digital business cards for your team. Each employee gets a shareable
-URL and a QR code that opens a contact page, downloads a vCard, or adds the card
-to Apple Wallet. Admins can manage employees and see view/scan analytics.
+Self-hosted digital business card app. React (TanStack Start) front-end backed by an Express + MySQL API with local-disk file storage.
+
+## Architecture
+
+```
+Browser ──► TanStack Start SPA ──► Express REST API (/api/*) ──► MySQL 8
+                                              │
+                                              └─► local disk (UPLOAD_DIR)
+```
+
+- **Frontend**: TanStack Start (React 19, Vite 7, Tailwind v4). Calls the backend via `src/lib/api.ts` (base URL = `VITE_API_BASE_URL`, default `/api`).
+- **Backend**: Node 20 Express bundle in [`selfhost/`](./INSTALL.md) — serves REST endpoints, QR/vCard/Wallet generators, and `/uploads/*`.
+- **Database**: MySQL 8. Schema in [`schema.sql`](./schema.sql).
+- **Auth**: currently disabled. The admin UI at `/admin` is open. Add JWT/cookie auth in the Express layer before exposing publicly.
 
 ## Features
 
-- Public card page at `/card/<slug>` with photo, contact details and brand colour
-- QR code generator (`/api/public/qr/<slug>?format=png|svg`)
-- vCard download (`/api/public/vcard/<slug>`)
-- Apple Wallet pass (`/api/public/wallet/<slug>`) — optional, needs Apple certs
-- Admin dashboard with employee CRUD and company branding
-- **Analytics**: per-employee card views and QR scans, 30-day daily breakdown,
-  recent event log (source, referrer, user-agent)
-- Email/password auth with admin role gating
-- Centralised SSR error reporting (`/api/public/errors`) with request IDs
+- Public card pages at `/card/:slug` with vCard download and QR
+- Admin CRUD for employees and company branding
+- Apple Wallet (`.pkpass`) and Google Wallet pass generation (backend handles signing)
+- Scan/view analytics per employee
 
-## Tech stack
+## Local development
 
-- TanStack Start v1 (React 19, Vite 7) on Cloudflare Workers
-- Supabase (Postgres + Auth + Storage) — managed as **Lovable Cloud**
-- Tailwind CSS v4
-- `qrcode`, `@walletpass/pass-js`
+```bash
+# 1. Backend (see INSTALL.md for full setup)
+cd selfhost && npm ci && npm run dev   # API on :3000
 
-## Project layout
-
-```
-src/
-├── routes/
-│   ├── index.tsx                 landing page
-│   ├── login.tsx                 email/password sign in
-│   ├── card.$slug.tsx            public card page (records view/scan)
-│   ├── _authenticated/
-│   │   ├── route.tsx             auth guard layout
-│   │   ├── admin.index.tsx       employee list + 30d analytics
-│   │   ├── admin.new.tsx         create employee form
-│   │   └── admin.$id.tsx         edit form + analytics panel
-│   └── api/public/
-│       ├── qr.$slug.ts           QR code (PNG/SVG)
-│       ├── vcard.$slug.ts        vCard download
-│       ├── wallet.$slug.ts       Apple Wallet pass
-│       ├── errors.ts             SSR error ingest
-│       └── healthcheck.ts
-├── lib/
-│   ├── employees.functions.ts    admin CRUD server fns
-│   ├── analytics.functions.ts    view/scan recording + reporting
-│   ├── employees.schema.ts       Zod schemas
-│   ├── vcard.ts                  vCard builder
-│   └── error-capture.ts          SSR error reporter
-└── integrations/supabase/        auto-generated clients & types
+# 2. Frontend (this repo)
+bun install
+VITE_API_BASE_URL=http://localhost:3000/api bun dev
 ```
 
-See [INSTALL.md](./INSTALL.md) for setup. The reference SQL schema is in
-[schema.sql](./schema.sql).
+Then open `http://localhost:5173`.
+
+## Deployment
+
+See [INSTALL.md](./INSTALL.md) for the full single-VPS install (MySQL + Node + systemd + Caddy).
+
+## Re-enabling auth
+
+The admin section was intentionally left open during the cloud → self-host migration. To lock it down:
+
+1. Add an `/api/auth/login` endpoint in the Express bundle (bcrypt + JWT cookie).
+2. Wrap admin endpoints with a `requireAdmin` middleware.
+3. Restore an `_authenticated` route guard in `src/routes/_authenticated/route.tsx` that calls `/api/auth/me` and redirects on 401.
