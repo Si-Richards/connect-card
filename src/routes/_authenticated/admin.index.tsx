@@ -108,7 +108,7 @@ function AdminList() {
                       </a>
                       <button
                         title={e.disabled ? "Enable" : "Disable"}
-                        onClick={async () => { await toggleFn({ data: { id: e.id, disabled: !e.disabled } }); q.refetch(); }}
+                        onClick={async () => { await toggleEmployeeDisabled({ data: { id: e.id, disabled: !e.disabled } }); q.refetch(); }}
                         className="p-2 hover:bg-muted rounded"
                       >
                         {e.disabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
@@ -120,7 +120,7 @@ function AdminList() {
                         title="Delete"
                         onClick={async () => {
                           if (!confirm(`Delete ${e.full_name}?`)) return;
-                          await delFn({ data: { id: e.id } });
+                          await deleteEmployee({ data: { id: e.id } });
                           q.refetch();
                         }}
                         className="p-2 hover:bg-muted rounded text-destructive"
