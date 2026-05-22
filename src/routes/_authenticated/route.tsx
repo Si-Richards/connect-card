@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
+  pendingComponent: AuthPending,
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) {
@@ -11,6 +12,14 @@ export const Route = createFileRoute("/_authenticated")({
   },
   component: AuthLayout,
 });
+
+function AuthPending() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+      <div className="text-sm text-muted-foreground">Loading admin…</div>
+    </div>
+  );
+}
 
 function AuthLayout() {
   const router = useRouter();
