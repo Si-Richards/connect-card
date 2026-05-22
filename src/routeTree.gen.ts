@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CardSlugRouteImport } from './routes/card.$slug'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as ApiPublicHealthcheckRouteImport } from './routes/api/public/healthcheck'
+import { Route as ApiPublicErrorsRouteImport } from './routes/api/public/errors'
 import { Route as AuthenticatedAdminNewRouteImport } from './routes/_authenticated/admin.new'
 import { Route as AuthenticatedAdminIdRouteImport } from './routes/_authenticated/admin.$id'
 import { Route as ApiPublicWalletSlugRouteImport } from './routes/api/public/wallet.$slug'
@@ -50,6 +51,11 @@ const ApiPublicHealthcheckRoute = ApiPublicHealthcheckRouteImport.update({
   path: '/api/public/healthcheck',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicErrorsRoute = ApiPublicErrorsRouteImport.update({
+  id: '/api/public/errors',
+  path: '/api/public/errors',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminNewRoute = AuthenticatedAdminNewRouteImport.update({
   id: '/admin/new',
   path: '/admin/new',
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/card/$slug': typeof CardSlugRoute
   '/admin/$id': typeof AuthenticatedAdminIdRoute
   '/admin/new': typeof AuthenticatedAdminNewRoute
+  '/api/public/errors': typeof ApiPublicErrorsRoute
   '/api/public/healthcheck': typeof ApiPublicHealthcheckRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/qr/$slug': typeof ApiPublicQrSlugRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/card/$slug': typeof CardSlugRoute
   '/admin/$id': typeof AuthenticatedAdminIdRoute
   '/admin/new': typeof AuthenticatedAdminNewRoute
+  '/api/public/errors': typeof ApiPublicErrorsRoute
   '/api/public/healthcheck': typeof ApiPublicHealthcheckRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/api/public/qr/$slug': typeof ApiPublicQrSlugRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/card/$slug': typeof CardSlugRoute
   '/_authenticated/admin/$id': typeof AuthenticatedAdminIdRoute
   '/_authenticated/admin/new': typeof AuthenticatedAdminNewRoute
+  '/api/public/errors': typeof ApiPublicErrorsRoute
   '/api/public/healthcheck': typeof ApiPublicHealthcheckRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/qr/$slug': typeof ApiPublicQrSlugRoute
@@ -122,6 +131,7 @@ export interface FileRouteTypes {
     | '/card/$slug'
     | '/admin/$id'
     | '/admin/new'
+    | '/api/public/errors'
     | '/api/public/healthcheck'
     | '/admin/'
     | '/api/public/qr/$slug'
@@ -134,6 +144,7 @@ export interface FileRouteTypes {
     | '/card/$slug'
     | '/admin/$id'
     | '/admin/new'
+    | '/api/public/errors'
     | '/api/public/healthcheck'
     | '/admin'
     | '/api/public/qr/$slug'
@@ -147,6 +158,7 @@ export interface FileRouteTypes {
     | '/card/$slug'
     | '/_authenticated/admin/$id'
     | '/_authenticated/admin/new'
+    | '/api/public/errors'
     | '/api/public/healthcheck'
     | '/_authenticated/admin/'
     | '/api/public/qr/$slug'
@@ -159,6 +171,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   LoginRoute: typeof LoginRoute
   CardSlugRoute: typeof CardSlugRoute
+  ApiPublicErrorsRoute: typeof ApiPublicErrorsRoute
   ApiPublicHealthcheckRoute: typeof ApiPublicHealthcheckRoute
   ApiPublicQrSlugRoute: typeof ApiPublicQrSlugRoute
   ApiPublicVcardSlugRoute: typeof ApiPublicVcardSlugRoute
@@ -207,6 +220,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/healthcheck'
       fullPath: '/api/public/healthcheck'
       preLoaderRoute: typeof ApiPublicHealthcheckRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/errors': {
+      id: '/api/public/errors'
+      path: '/api/public/errors'
+      fullPath: '/api/public/errors'
+      preLoaderRoute: typeof ApiPublicErrorsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/new': {
@@ -267,6 +287,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   LoginRoute: LoginRoute,
   CardSlugRoute: CardSlugRoute,
+  ApiPublicErrorsRoute: ApiPublicErrorsRoute,
   ApiPublicHealthcheckRoute: ApiPublicHealthcheckRoute,
   ApiPublicQrSlugRoute: ApiPublicQrSlugRoute,
   ApiPublicVcardSlugRoute: ApiPublicVcardSlugRoute,
