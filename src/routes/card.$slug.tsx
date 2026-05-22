@@ -144,14 +144,7 @@ function CardPage() {
                 <Download className="w-4 h-4" />
                 Save to Contacts (vCard)
               </a>
-              <button
-                disabled
-                title="Apple Wallet requires Apple Developer certificate setup"
-                className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium border border-border text-muted-foreground bg-muted/40 cursor-not-allowed"
-              >
-                <Wallet className="w-4 h-4" />
-                Add to Apple Wallet
-              </button>
+              <WalletButton slug={e.slug} brand={brand} />
             </div>
 
             {/* Contact list */}
@@ -222,6 +215,60 @@ function ContactRow({
         <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
         <div className="truncate text-sm font-medium">{value}</div>
       </div>
+    </a>
+  );
+}
+
+function WalletButton({ slug, brand }: { slug: string; brand: string }) {
+  const [status, setStatus] = useState<"idle" | "loading" | "unavailable">("idle");
+  const url = `/api/public/wallet/${encodeURIComponent(slug)}`;
+
+  const onClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setStatus("loading");
+    try {
+      const res = await fetch(url);
+      if (res.status === 503) {
+        setStatus("unavailable");
+        return;
+      }
+      if (!res.ok) {
+        setStatus("unavailable");
+        return;
+      }
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = `${slug}.pkpass`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+      setStatus("idle");
+    } catch {
+      setStatus("unavailable");
+    }
+  };
+
+  if (status === "unavailable") {
+    return (
+      <div className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm border border-border text-muted-foreground bg-muted/40">
+        <Wallet className="w-4 h-4" />
+        Apple Wallet not configured yet
+      </div>
+    );
+  }
+
+  return (
+    <a
+      href={url}
+      onClick={onClick}
+      className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium border border-border hover:bg-muted/50 transition-colors"
+      style={{ borderColor: brand }}
+    >
+      <Wallet className="w-4 h-4" />
+      {status === "loading" ? "Preparing pass…" : "Add to Apple Wallet"}
     </a>
   );
 }
