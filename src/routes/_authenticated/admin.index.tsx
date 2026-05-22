@@ -9,6 +9,7 @@ import {
   toggleEmployeeDisabled,
   checkIsAdmin,
 } from "@/lib/employees.functions";
+import { listEmployeeAnalytics } from "@/lib/analytics.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
   component: AdminList,
