@@ -9,18 +9,15 @@ export const Route = createFileRoute("/api/public/wallet/$slug")({
     handlers: {
       GET: async ({ params, request }) => {
         try {
-          const passTypeId = process.env.APPLE_PASS_TYPE_ID;
-          const teamId = process.env.APPLE_TEAM_ID;
-          const p12Base64 = process.env.APPLE_PASS_P12_BASE64;
-          const p12Password = process.env.APPLE_PASS_P12_PASSWORD;
-          const wwdrBase64 = process.env.APPLE_WWDR_BASE64;
-
-          if (!passTypeId || !teamId || !p12Base64 || !p12Password || !wwdrBase64) {
+          const { getAppleWalletConfig } = await import("@/lib/wallet-config.server");
+          const cfg = getAppleWalletConfig();
+          if (!cfg) {
             return new Response(
               "Apple Wallet is not configured yet. The admin needs to upload an Apple Pass Type ID certificate.",
               { status: 503 },
             );
           }
+          const { passTypeId, teamId, p12Base64, p12Password, wwdrBase64 } = cfg;
 
           const slug = params.slug.replace(/\.pkpass$/i, "");
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
