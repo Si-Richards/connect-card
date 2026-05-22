@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Eye, QrCode, Download, Wallet } from "lucide-react";
+import { Eye, QrCode, Download, Wallet, FileImage, FileCode2, Link2, Check } from "lucide-react";
+import { useState } from "react";
 import { EmployeeForm } from "./admin.new";
 import { getEmployeeAnalytics } from "@/lib/analytics.functions";
+import { getEmployee } from "@/lib/employees.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/$id")({
   component: EditPage,
@@ -13,12 +15,99 @@ function EditPage() {
   return (
     <div className="space-y-8">
       <EmployeeForm mode={{ kind: "edit", id }} />
+      <div className="max-w-3xl mx-auto px-6 space-y-6">
+        <QrPanel id={id} />
+      </div>
       <div className="max-w-3xl mx-auto px-6 pb-12">
         <AnalyticsPanel id={id} />
       </div>
     </div>
   );
 }
+
+function QrPanel({ id }: { id: string }) {
+  const q = useQuery({
+    queryKey: ["employee", id],
+    queryFn: () => getEmployee({ data: { id } }),
+  });
+  const [copied, setCopied] = useState(false);
+
+  if (q.isLoading) return null;
+  if (q.isError || !q.data?.employee) return null;
+  const e = q.data.employee;
+  const cardUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/card/${e.slug}`
+    : `/card/${e.slug}`;
+  const qrBase = `/api/public/qr/${encodeURIComponent(e.slug)}`;
+
+  return (
+    <section className="rounded-lg border border-border p-5 bg-card">
+      <header className="mb-4">
+        <h2 className="text-lg font-semibold">QR code &amp; public link</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Print the QR or share the link. Scans are tracked automatically.
+        </p>
+      </header>
+      <div className="flex flex-col sm:flex-row gap-5 items-start">
+        <div className="bg-white p-3 rounded-lg border border-border shrink-0">
+          <img src={`${qrBase}?format=svg`} alt={`QR for ${e.full_name}`} className="w-36 h-36 block" />
+        </div>
+        <div className="flex-1 w-full space-y-3 min-w-0">
+          <div className="flex items-center gap-2">
+            <input
+              readOnly
+              value={cardUrl}
+              onFocus={(ev) => ev.currentTarget.select()}
+              className="flex-1 min-w-0 rounded-md border border-input bg-background px-3 py-2 text-xs font-mono"
+            />
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(cardUrl);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                } catch { /* ignore */ }
+              }}
+              className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-2 text-xs font-medium hover:bg-accent"
+            >
+              {copied ? <Check className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={`${qrBase}?format=png&download=1`}
+              download={`${e.slug}-qr.png`}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              <FileImage className="w-3.5 h-3.5" />
+              Download PNG
+            </a>
+            <a
+              href={`${qrBase}?format=svg&download=1`}
+              download={`${e.slug}-qr.svg`}
+              className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-2 text-xs font-medium hover:bg-accent"
+            >
+              <FileCode2 className="w-3.5 h-3.5" />
+              Download SVG
+            </a>
+            <a
+              href={cardUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-2 text-xs font-medium hover:bg-accent"
+            >
+              <Link2 className="w-3.5 h-3.5" />
+              Open card
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 
 const EVENT_LABEL: Record<string, string> = {
   view: "View",
