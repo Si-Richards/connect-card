@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { buildVCard } from "@/lib/vcard";
 
 export const Route = createFileRoute("/api/public/vcard/$slug")({
   server: {
     handlers: {
       GET: async ({ params }) => {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const slug = params.slug.replace(/\.vcf$/i, "");
         const { data, error } = await supabaseAdmin
           .from("employees")
