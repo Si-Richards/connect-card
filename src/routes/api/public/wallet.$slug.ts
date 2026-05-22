@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const ICON_PNG = "iVBORw0KGgoAAAANSUhEUgAAAB0AAAAdCAYAAABWk2cPAAAAL0lEQVR4nO3NQREAIAgAMKQATzrYv5+U8HhtBXaq74tluR1KpVKpVCqVSqVS6QcD4gQBiVHsscUAAAAASUVORK5CYII=";
 const ICON_2X_PNG = "iVBORw0KGgoAAAANSUhEUgAAADoAAAA6CAYAAADhu0ooAAAAY0lEQVR4nO3PQRGAMADAsDEDe+IB//6Yi3EXGgXtte7nHT8wvw44pVFNo5pGNY1qGtU0qmlU06imUU2jmkY1jWoa1TSqaVTTqKZRTaOaRjWNahrVNKppVNOoplFNo5pGNY1qNj7sAcMJQBnNAAAAAElFTkSuQmCC";
@@ -23,6 +22,7 @@ export const Route = createFileRoute("/api/public/wallet/$slug")({
         }
 
         const slug = params.slug.replace(/\.pkpass$/i, "");
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data: e, error } = await supabaseAdmin
           .from("employees")
           .select("*")
