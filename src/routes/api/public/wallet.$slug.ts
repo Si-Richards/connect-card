@@ -9,7 +9,7 @@ export const Route = createFileRoute("/api/public/wallet/$slug")({
     handlers: {
       GET: async ({ params, request }) => {
         try {
-          const { getAppleWalletConfig } = await import("@/lib/wallet-config.server");
+          const { getAppleWalletConfig } = await import("@/lib/config.server");
           const cfg = getAppleWalletConfig();
           if (!cfg) {
             return new Response(

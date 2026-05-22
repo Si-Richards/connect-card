@@ -9,7 +9,7 @@ export const Route = createFileRoute("/api/public/wallet-status")({
     handlers: {
       GET: async () => {
         const { getAppleWalletConfig, getGoogleWalletConfig } = await import(
-          "@/lib/wallet-config.server"
+          "@/lib/config.server"
         );
         return Response.json({
           apple: getAppleWalletConfig() !== null,

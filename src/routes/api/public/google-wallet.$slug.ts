@@ -12,7 +12,7 @@ export const Route = createFileRoute("/api/public/google-wallet/$slug")({
     handlers: {
       GET: async ({ params, request }) => {
         try {
-          const { getGoogleWalletConfig } = await import("@/lib/wallet-config.server");
+          const { getGoogleWalletConfig } = await import("@/lib/config.server");
           const cfg = getGoogleWalletConfig();
           if (!cfg) {
             return new Response(
