@@ -163,7 +163,7 @@ function CardPage() {
                 <Download className="w-4 h-4" />
                 Save to Contacts (vCard)
               </a>
-              <WalletButton slug={e.slug} brand={brand} />
+              <WalletButtons slug={e.slug} brand={brand} />
             </div>
 
             {/* Contact list */}
