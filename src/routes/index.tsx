@@ -18,10 +18,10 @@ function Landing() {
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="font-semibold tracking-tight">CardKit</div>
           <Link
-            to="/login"
+            to="/admin"
             className="text-sm font-medium rounded-md px-4 py-2 bg-primary text-primary-foreground hover:opacity-90"
           >
-            Admin sign in
+            Open admin
           </Link>
         </div>
       </header>
@@ -37,7 +37,7 @@ function Landing() {
           </p>
           <div className="mt-8 flex gap-3">
             <Link
-              to="/login"
+              to="/admin"
               className="inline-flex items-center gap-2 rounded-md px-5 py-3 font-medium bg-primary text-primary-foreground hover:opacity-90"
             >
               Get started <ArrowRight className="w-4 h-4" />
