@@ -1,6 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { z } from "zod";
-import { Mail, Phone, Smartphone, Globe, Linkedin, Download, QrCode, Wallet, Link2, Check, Share2 } from "lucide-react";
+import { Mail, Phone, Smartphone, Globe, Linkedin, Download, Wallet, Link2, Check, Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { recordEmployeeEvent } from "@/lib/analytics.functions";
 import { api } from "@/lib/api";
