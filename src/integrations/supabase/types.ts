@@ -38,6 +38,44 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_events: {
+        Row: {
+          employee_id: string
+          event_type: string
+          id: string
+          occurred_at: string
+          referrer: string | null
+          source: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          employee_id: string
+          event_type: string
+          id?: string
+          occurred_at?: string
+          referrer?: string | null
+          source?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          employee_id?: string
+          event_type?: string
+          id?: string
+          occurred_at?: string
+          referrer?: string | null
+          source?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_events_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           company: string | null
