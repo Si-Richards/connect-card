@@ -1,34 +1,9 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { Mail, Phone, Smartphone, Globe, Linkedin, Download, QrCode, Wallet } from "lucide-react";
 import { useEffect, useState } from "react";
 import { recordEmployeeEvent } from "@/lib/analytics.functions";
-
-const getPublicCard = createServerFn({ method: "POST" })
-  .inputValidator((input: { slug: string }) =>
-    z.object({ slug: z.string().min(1).max(64) }).parse(input),
-  )
-  .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: employee, error } = await supabaseAdmin
-      .from("employees")
-      .select(
-        "id, slug, full_name, job_title, company, email, office_phone, mobile, website, linkedin, notes, photo_url, disabled",
-      )
-      .eq("slug", data.slug)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!employee) return { employee: null, settings: null };
-
-    const { data: settings } = await supabaseAdmin
-      .from("company_settings")
-      .select("company_name, logo_url, brand_color")
-      .eq("id", true)
-      .maybeSingle();
-
-    return { employee, settings };
-  });
+import { api } from "@/lib/api";
 
 const cardSearchSchema = z.object({
   src: z.string().max(32).optional(),
@@ -37,7 +12,7 @@ const cardSearchSchema = z.object({
 export const Route = createFileRoute("/card/$slug")({
   validateSearch: (s) => cardSearchSchema.parse(s),
   loader: async ({ params }) => {
-    const res = await getPublicCard({ data: { slug: params.slug } });
+    const res = await api.getEmployeeBySlug(params.slug);
     if (!res.employee) throw notFound();
     return res;
   },

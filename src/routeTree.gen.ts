@@ -9,26 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CardSlugRouteImport } from './routes/card.$slug'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
-import { Route as ApiPublicWalletStatusRouteImport } from './routes/api/public/wallet-status'
 import { Route as ApiPublicHealthcheckRouteImport } from './routes/api/public/healthcheck'
 import { Route as ApiPublicErrorsRouteImport } from './routes/api/public/errors'
 import { Route as AuthenticatedAdminNewRouteImport } from './routes/_authenticated/admin.new'
 import { Route as AuthenticatedAdminIdRouteImport } from './routes/_authenticated/admin.$id'
-import { Route as ApiPublicWalletSlugRouteImport } from './routes/api/public/wallet.$slug'
-import { Route as ApiPublicVcardSlugRouteImport } from './routes/api/public/vcard.$slug'
-import { Route as ApiPublicQrSlugRouteImport } from './routes/api/public/qr.$slug'
-import { Route as ApiPublicGoogleWalletSlugRouteImport } from './routes/api/public/google-wallet.$slug'
 
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -47,11 +36,6 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
   getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const ApiPublicWalletStatusRoute = ApiPublicWalletStatusRouteImport.update({
-  id: '/api/public/wallet-status',
-  path: '/api/public/wallet-status',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicHealthcheckRoute = ApiPublicHealthcheckRouteImport.update({
   id: '/api/public/healthcheck',
@@ -73,147 +57,77 @@ const AuthenticatedAdminIdRoute = AuthenticatedAdminIdRouteImport.update({
   path: '/admin/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ApiPublicWalletSlugRoute = ApiPublicWalletSlugRouteImport.update({
-  id: '/api/public/wallet/$slug',
-  path: '/api/public/wallet/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicVcardSlugRoute = ApiPublicVcardSlugRouteImport.update({
-  id: '/api/public/vcard/$slug',
-  path: '/api/public/vcard/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicQrSlugRoute = ApiPublicQrSlugRouteImport.update({
-  id: '/api/public/qr/$slug',
-  path: '/api/public/qr/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicGoogleWalletSlugRoute =
-  ApiPublicGoogleWalletSlugRouteImport.update({
-    id: '/api/public/google-wallet/$slug',
-    path: '/api/public/google-wallet/$slug',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/login': typeof LoginRoute
   '/card/$slug': typeof CardSlugRoute
   '/admin/$id': typeof AuthenticatedAdminIdRoute
   '/admin/new': typeof AuthenticatedAdminNewRoute
   '/api/public/errors': typeof ApiPublicErrorsRoute
   '/api/public/healthcheck': typeof ApiPublicHealthcheckRoute
-  '/api/public/wallet-status': typeof ApiPublicWalletStatusRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
-  '/api/public/google-wallet/$slug': typeof ApiPublicGoogleWalletSlugRoute
-  '/api/public/qr/$slug': typeof ApiPublicQrSlugRoute
-  '/api/public/vcard/$slug': typeof ApiPublicVcardSlugRoute
-  '/api/public/wallet/$slug': typeof ApiPublicWalletSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/login': typeof LoginRoute
   '/card/$slug': typeof CardSlugRoute
   '/admin/$id': typeof AuthenticatedAdminIdRoute
   '/admin/new': typeof AuthenticatedAdminNewRoute
   '/api/public/errors': typeof ApiPublicErrorsRoute
   '/api/public/healthcheck': typeof ApiPublicHealthcheckRoute
-  '/api/public/wallet-status': typeof ApiPublicWalletStatusRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
-  '/api/public/google-wallet/$slug': typeof ApiPublicGoogleWalletSlugRoute
-  '/api/public/qr/$slug': typeof ApiPublicQrSlugRoute
-  '/api/public/vcard/$slug': typeof ApiPublicVcardSlugRoute
-  '/api/public/wallet/$slug': typeof ApiPublicWalletSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
-  '/login': typeof LoginRoute
   '/card/$slug': typeof CardSlugRoute
   '/_authenticated/admin/$id': typeof AuthenticatedAdminIdRoute
   '/_authenticated/admin/new': typeof AuthenticatedAdminNewRoute
   '/api/public/errors': typeof ApiPublicErrorsRoute
   '/api/public/healthcheck': typeof ApiPublicHealthcheckRoute
-  '/api/public/wallet-status': typeof ApiPublicWalletStatusRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
-  '/api/public/google-wallet/$slug': typeof ApiPublicGoogleWalletSlugRoute
-  '/api/public/qr/$slug': typeof ApiPublicQrSlugRoute
-  '/api/public/vcard/$slug': typeof ApiPublicVcardSlugRoute
-  '/api/public/wallet/$slug': typeof ApiPublicWalletSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/login'
     | '/card/$slug'
     | '/admin/$id'
     | '/admin/new'
     | '/api/public/errors'
     | '/api/public/healthcheck'
-    | '/api/public/wallet-status'
     | '/admin/'
-    | '/api/public/google-wallet/$slug'
-    | '/api/public/qr/$slug'
-    | '/api/public/vcard/$slug'
-    | '/api/public/wallet/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/login'
     | '/card/$slug'
     | '/admin/$id'
     | '/admin/new'
     | '/api/public/errors'
     | '/api/public/healthcheck'
-    | '/api/public/wallet-status'
     | '/admin'
-    | '/api/public/google-wallet/$slug'
-    | '/api/public/qr/$slug'
-    | '/api/public/vcard/$slug'
-    | '/api/public/wallet/$slug'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
-    | '/login'
     | '/card/$slug'
     | '/_authenticated/admin/$id'
     | '/_authenticated/admin/new'
     | '/api/public/errors'
     | '/api/public/healthcheck'
-    | '/api/public/wallet-status'
     | '/_authenticated/admin/'
-    | '/api/public/google-wallet/$slug'
-    | '/api/public/qr/$slug'
-    | '/api/public/vcard/$slug'
-    | '/api/public/wallet/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
-  LoginRoute: typeof LoginRoute
   CardSlugRoute: typeof CardSlugRoute
   ApiPublicErrorsRoute: typeof ApiPublicErrorsRoute
   ApiPublicHealthcheckRoute: typeof ApiPublicHealthcheckRoute
-  ApiPublicWalletStatusRoute: typeof ApiPublicWalletStatusRoute
-  ApiPublicGoogleWalletSlugRoute: typeof ApiPublicGoogleWalletSlugRoute
-  ApiPublicQrSlugRoute: typeof ApiPublicQrSlugRoute
-  ApiPublicVcardSlugRoute: typeof ApiPublicVcardSlugRoute
-  ApiPublicWalletSlugRoute: typeof ApiPublicWalletSlugRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -241,13 +155,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/api/public/wallet-status': {
-      id: '/api/public/wallet-status'
-      path: '/api/public/wallet-status'
-      fullPath: '/api/public/wallet-status'
-      preLoaderRoute: typeof ApiPublicWalletStatusRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/api/public/healthcheck': {
       id: '/api/public/healthcheck'
@@ -277,34 +184,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/api/public/wallet/$slug': {
-      id: '/api/public/wallet/$slug'
-      path: '/api/public/wallet/$slug'
-      fullPath: '/api/public/wallet/$slug'
-      preLoaderRoute: typeof ApiPublicWalletSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/vcard/$slug': {
-      id: '/api/public/vcard/$slug'
-      path: '/api/public/vcard/$slug'
-      fullPath: '/api/public/vcard/$slug'
-      preLoaderRoute: typeof ApiPublicVcardSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/qr/$slug': {
-      id: '/api/public/qr/$slug'
-      path: '/api/public/qr/$slug'
-      fullPath: '/api/public/qr/$slug'
-      preLoaderRoute: typeof ApiPublicQrSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/google-wallet/$slug': {
-      id: '/api/public/google-wallet/$slug'
-      path: '/api/public/google-wallet/$slug'
-      fullPath: '/api/public/google-wallet/$slug'
-      preLoaderRoute: typeof ApiPublicGoogleWalletSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -326,16 +205,20 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
-  LoginRoute: LoginRoute,
   CardSlugRoute: CardSlugRoute,
   ApiPublicErrorsRoute: ApiPublicErrorsRoute,
   ApiPublicHealthcheckRoute: ApiPublicHealthcheckRoute,
-  ApiPublicWalletStatusRoute: ApiPublicWalletStatusRoute,
-  ApiPublicGoogleWalletSlugRoute: ApiPublicGoogleWalletSlugRoute,
-  ApiPublicQrSlugRoute: ApiPublicQrSlugRoute,
-  ApiPublicVcardSlugRoute: ApiPublicVcardSlugRoute,
-  ApiPublicWalletSlugRoute: ApiPublicWalletSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

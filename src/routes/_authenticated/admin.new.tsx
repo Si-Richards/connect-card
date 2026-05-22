@@ -1,18 +1,26 @@
-import { createFileRoute, useNavigate, Link, useRouter } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+
 import { useEffect, useState } from "react";
 import { ArrowLeft, Upload } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { upsertEmployee, getEmployee } from "@/lib/employees.functions";
 import { employeeInputSchema } from "@/lib/employees.schema";
-import { slugify } from "@/lib/vcard";
+import { api } from "@/lib/api";
+
+function slugify(s: string) {
+  return s
+    .toLowerCase()
+    .trim()
+    .replace(/['"]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 type Mode = { kind: "new" } | { kind: "edit"; id: string };
 
 export function EmployeeForm({ mode }: { mode: Mode }) {
   const nav = useNavigate();
-  const upsert = useServerFn(upsertEmployee);
-  const fetchOne = useServerFn(getEmployee);
+  const upsert = upsertEmployee;
+  const fetchOne = getEmployee;
 
   const [form, setForm] = useState<any>({
     slug: "", full_name: "", job_title: "", company: "", email: "",
@@ -45,12 +53,8 @@ export function EmployeeForm({ mode }: { mode: Mode }) {
   const onUpload = async (file: File) => {
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop() ?? "jpg";
-      const path = `${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("employee-photos").upload(path, file, { upsert: false });
-      if (upErr) throw upErr;
-      const { data } = supabase.storage.from("employee-photos").getPublicUrl(path);
-      update("photo_url", data.publicUrl);
+      const { url } = await api.uploadFile(file, "employee-photo");
+      update("photo_url", url);
     } catch (e: any) {
       setError(e.message);
     } finally {
