@@ -12,7 +12,7 @@ import {
   Legend,
 } from "recharts";
 import { Eye, QrCode, Download, Wallet } from "lucide-react";
-import { listEmployees, checkIsAdmin } from "@/lib/employees.functions";
+import { listEmployees } from "@/lib/employees.functions";
 import {
   listEmployeeAnalytics,
   getEmployeeAnalytics,
@@ -50,13 +50,20 @@ function StatCard({
   label: string;
   value: number;
   icon: React.ReactNode;
-  tone: string;
+  tone: 1 | 2 | 3 | 4;
 }) {
+  const color = `var(--chart-${tone})`;
   return (
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center justify-between">
         <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
-        <span className={`w-8 h-8 rounded-md flex items-center justify-center ${tone}`}>
+        <span
+          className="w-8 h-8 rounded-md flex items-center justify-center"
+          style={{
+            backgroundColor: `color-mix(in oklab, ${color} 18%, transparent)`,
+            color,
+          }}
+        >
           {icon}
         </span>
       </div>
@@ -69,26 +76,21 @@ function AnalyticsPage() {
   const [days, setDays] = useState<Range>(30);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const adminQ = useQuery({ queryKey: ["isAdmin"], queryFn: () => checkIsAdmin({}) });
-  const enabled = adminQ.data?.isAdmin === true;
-
   const employeesQ = useQuery({
     queryKey: ["employees"],
     queryFn: () => listEmployees({}),
-    enabled,
   });
 
   const summaryQ = useQuery<AnalyticsSummary>({
     queryKey: ["analytics-summary", days],
     queryFn: () => listEmployeeAnalytics({ data: { days } }),
-    enabled,
   });
 
   const detailQ = useQuery<AnalyticsDetail>({
     queryKey: ["analytics-employee", selectedId, days],
     queryFn: () =>
       getEmployeeAnalytics({ data: { id: selectedId as string, days } }),
-    enabled: enabled && !!selectedId,
+    enabled: !!selectedId,
   });
 
   const employees = employeesQ.data?.employees ?? [];
@@ -109,14 +111,6 @@ function AnalyticsPage() {
       );
   }, [employees, totals]);
 
-  if (adminQ.isLoading) return <div className="p-6">Loading…</div>;
-  if (!adminQ.data?.isAdmin) {
-    return (
-      <div className="max-w-2xl mx-auto p-6 text-center">
-        <h1 className="text-xl font-semibold">Admin access required</h1>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
@@ -142,10 +136,10 @@ function AnalyticsPage() {
 
       {/* Overall stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Card views" value={overall.views} icon={<Eye className="w-4 h-4" />} tone="bg-blue-100 text-blue-700" />
-        <StatCard label="QR scans" value={overall.scans} icon={<QrCode className="w-4 h-4" />} tone="bg-emerald-100 text-emerald-700" />
-        <StatCard label="vCard downloads" value={overall.vcards} icon={<Download className="w-4 h-4" />} tone="bg-amber-100 text-amber-700" />
-        <StatCard label="Wallet passes" value={overall.wallets} icon={<Wallet className="w-4 h-4" />} tone="bg-violet-100 text-violet-700" />
+        <StatCard label="Card views" value={overall.views} icon={<Eye className="w-4 h-4" />} tone={1} />
+        <StatCard label="QR scans" value={overall.scans} icon={<QrCode className="w-4 h-4" />} tone={2} />
+        <StatCard label="vCard downloads" value={overall.vcards} icon={<Download className="w-4 h-4" />} tone={3} />
+        <StatCard label="Wallet passes" value={overall.wallets} icon={<Wallet className="w-4 h-4" />} tone={4} />
       </div>
 
       {/* Global series */}
@@ -271,10 +265,10 @@ function AnalyticsPage() {
           {detailQ.data && (
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <StatCard label="Views" value={detailQ.data.totals.views} icon={<Eye className="w-4 h-4" />} tone="bg-blue-100 text-blue-700" />
-                <StatCard label="QR scans" value={detailQ.data.totals.scans} icon={<QrCode className="w-4 h-4" />} tone="bg-emerald-100 text-emerald-700" />
-                <StatCard label="vCard" value={detailQ.data.totals.vcards} icon={<Download className="w-4 h-4" />} tone="bg-amber-100 text-amber-700" />
-                <StatCard label="Wallet" value={detailQ.data.totals.wallets} icon={<Wallet className="w-4 h-4" />} tone="bg-violet-100 text-violet-700" />
+                <StatCard label="Views" value={detailQ.data.totals.views} icon={<Eye className="w-4 h-4" />} tone={1} />
+                <StatCard label="QR scans" value={detailQ.data.totals.scans} icon={<QrCode className="w-4 h-4" />} tone={2} />
+                <StatCard label="vCard" value={detailQ.data.totals.vcards} icon={<Download className="w-4 h-4" />} tone={3} />
+                <StatCard label="Wallet" value={detailQ.data.totals.wallets} icon={<Wallet className="w-4 h-4" />} tone={4} />
               </div>
 
               <div className="h-64">
@@ -284,13 +278,14 @@ function AnalyticsPage() {
                     <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={(d) => d.slice(5)} />
                     <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                     <Tooltip
-                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                      contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12, color: "var(--foreground)" }}
+                      labelStyle={{ color: "var(--foreground)" }}
                     />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Area type="monotone" dataKey="views" name="Views" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.15} strokeWidth={2} />
-                    <Area type="monotone" dataKey="scans" name="QR scans" stroke="#10b981" fill="#10b981" fillOpacity={0.15} strokeWidth={2} />
-                    <Area type="monotone" dataKey="vcards" name="vCard" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.15} strokeWidth={2} />
-                    <Area type="monotone" dataKey="wallets" name="Wallet" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.15} strokeWidth={2} />
+                    <Area type="monotone" dataKey="views" name="Views" stroke="var(--chart-1)" fill="var(--chart-1)" fillOpacity={0.15} strokeWidth={2} />
+                    <Area type="monotone" dataKey="scans" name="QR scans" stroke="var(--chart-2)" fill="var(--chart-2)" fillOpacity={0.15} strokeWidth={2} />
+                    <Area type="monotone" dataKey="vcards" name="vCard" stroke="var(--chart-3)" fill="var(--chart-3)" fillOpacity={0.15} strokeWidth={2} />
+                    <Area type="monotone" dataKey="wallets" name="Wallet" stroke="var(--chart-4)" fill="var(--chart-4)" fillOpacity={0.15} strokeWidth={2} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

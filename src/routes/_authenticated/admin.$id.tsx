@@ -145,26 +145,35 @@ function AnalyticsPanel({ id }: { id: string }) {
       <div className="flex items-end gap-1 h-24 mb-2">
         {series.map((d) => {
           const total = d.views + d.scans + d.vcards + d.wallets;
+          const bar = (value: number, tone: 1 | 2 | 3 | 4) => (
+            <div
+              style={{
+                height: `${(value / max) * 100}%`,
+                minHeight: value ? 2 : 0,
+                backgroundColor: `color-mix(in oklab, var(--chart-${tone}) 70%, transparent)`,
+              }}
+            />
+          );
           return (
             <div
               key={d.date}
               className="flex-1 flex flex-col-reverse gap-px"
               title={`${d.date}: ${d.views}v / ${d.scans}s / ${d.vcards}vc / ${d.wallets}w`}
             >
-              <div className="bg-primary/30" style={{ height: `${(d.views / max) * 100}%`, minHeight: d.views ? 2 : 0 }} />
-              <div className="bg-primary" style={{ height: `${(d.scans / max) * 100}%`, minHeight: d.scans ? 2 : 0 }} />
-              <div className="bg-amber-500/70" style={{ height: `${(d.vcards / max) * 100}%`, minHeight: d.vcards ? 2 : 0 }} />
-              <div className="bg-violet-500/70" style={{ height: `${(d.wallets / max) * 100}%`, minHeight: d.wallets ? 2 : 0 }} />
+              {bar(d.views, 1)}
+              {bar(d.scans, 2)}
+              {bar(d.vcards, 3)}
+              {bar(d.wallets, 4)}
               <div className="opacity-0" style={{ height: `${100 - (total / max) * 100}%` }} />
             </div>
           );
         })}
       </div>
       <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground mb-6">
-        <Legend swatch="bg-primary/30" label="Views" />
-        <Legend swatch="bg-primary" label="Scans" />
-        <Legend swatch="bg-amber-500/70" label="vCard" />
-        <Legend swatch="bg-violet-500/70" label="Wallet" />
+        <Legend tone={1} label="Views" />
+        <Legend tone={2} label="Scans" />
+        <Legend tone={3} label="vCard" />
+        <Legend tone={4} label="Wallet" />
       </div>
 
       <h3 className="text-sm font-medium mb-2">Recent events</h3>
@@ -216,10 +225,14 @@ function Stat({ label, value, icon }: { label: string; value: number; icon: Reac
   );
 }
 
-function Legend({ swatch, label }: { swatch: string; label: string }) {
+function Legend({ tone, label }: { tone: 1 | 2 | 3 | 4; label: string }) {
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span className={`w-2 h-2 rounded-sm ${swatch}`} /> {label}
+      <span
+        className="w-2 h-2 rounded-sm"
+        style={{ backgroundColor: `color-mix(in oklab, var(--chart-${tone}) 70%, transparent)` }}
+      />
+      {label}
     </span>
   );
 }
