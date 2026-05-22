@@ -1,7 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { Mail, Phone, Smartphone, Globe, Linkedin, Download, QrCode, Wallet } from "lucide-react";
 import { useState } from "react";
 
@@ -10,6 +9,7 @@ const getPublicCard = createServerFn({ method: "POST" })
     z.object({ slug: z.string().min(1).max(64) }).parse(input),
   )
   .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: employee, error } = await supabaseAdmin
       .from("employees")
       .select(
