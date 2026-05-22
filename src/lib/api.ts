@@ -34,18 +34,37 @@ export type CompanySettings = {
   logo_url: string | null;
 };
 
-export type AnalyticsTotals = Record<string, { views: number; scans: number }>;
+export type EventBucket = {
+  views: number;
+  scans: number;
+  vcards: number;
+  wallets: number;
+};
+
+export type AnalyticsTotals = Record<string, EventBucket>;
+
+export type AnalyticsSeriesPoint = { date: string } & EventBucket;
 
 export type AnalyticsEvent = {
-  event_type: "view" | "scan";
+  event_type: "view" | "qr_scan" | "vcard_download" | "wallet_download";
   occurred_at: string;
-  source: string | null;
+  user_agent: string | null;
   referrer: string | null;
 };
 
+export type AnalyticsSummary = {
+  since: string;
+  days: number;
+  totals: AnalyticsTotals;
+  series: AnalyticsSeriesPoint[];
+};
+
 export type AnalyticsDetail = {
-  totals: { views: number; scans: number };
-  series: Array<{ date: string; views: number; scans: number }>;
+  employee: { id: string; full_name: string; slug: string };
+  since: string;
+  days: number;
+  totals: EventBucket;
+  series: AnalyticsSeriesPoint[];
   recent: AnalyticsEvent[];
 };
 
@@ -142,8 +161,8 @@ export const api = {
       body: JSON.stringify(input),
     }),
 
-  listAnalytics: () =>
-    request<{ since: string; totals: AnalyticsTotals }>("/analytics/summary"),
+  listAnalytics: (days = 30) =>
+    request<AnalyticsSummary>(`/analytics/summary?days=${days}`),
 
   getAnalytics: (id: string, days = 30) =>
     request<AnalyticsDetail>(`/analytics/employees/${id}?days=${days}`),

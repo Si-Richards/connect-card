@@ -17,7 +17,8 @@ type RecordInput = {
 
 export const recordEmployeeEvent = ({ data }: RecordInput) => api.recordEvent(data);
 
-export const listEmployeeAnalytics = (_?: { data?: unknown }) => api.listAnalytics();
+export const listEmployeeAnalytics = (input?: { data?: { days?: number } }) =>
+  api.listAnalytics(input?.data?.days ?? 30);
 
 export const getEmployeeAnalytics = ({
   data,
