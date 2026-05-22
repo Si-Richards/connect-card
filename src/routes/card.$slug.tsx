@@ -1,6 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { z } from "zod";
-import { Mail, Phone, Smartphone, Globe, Linkedin, Download, QrCode, Wallet } from "lucide-react";
+import { Mail, Phone, Smartphone, Globe, Linkedin, Download, Wallet, Link2, Check, Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { recordEmployeeEvent } from "@/lib/analytics.functions";
 import { api } from "@/lib/api";
@@ -169,20 +169,35 @@ function CardPage() {
                   className="w-40 h-40"
                 />
               </div>
-              <button
-                onClick={async () => {
-                  if (navigator.share) {
-                    try { await navigator.share({ title: e.full_name, url: shareUrl }); return; } catch {}
-                  }
-                  await navigator.clipboard.writeText(shareUrl);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1500);
-                }}
-                className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-2"
-              >
-                <QrCode className="w-4 h-4" />
-                {copied ? "Link copied!" : "Share this card"}
-              </button>
+              <div className="flex items-center gap-2 w-full">
+                <button
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(shareUrl);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 1500);
+                    } catch {
+                      /* ignore */
+                    }
+                  }}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium border border-border bg-background hover:bg-muted transition-colors"
+                  aria-label="Copy public link"
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Link2 className="w-4 h-4" />}
+                  {copied ? "Link copied!" : "Copy link"}
+                </button>
+                {typeof navigator !== "undefined" && "share" in navigator && (
+                  <button
+                    onClick={async () => {
+                      try { await navigator.share({ title: e.full_name, url: shareUrl }); } catch {}
+                    }}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium border border-border bg-background hover:bg-muted transition-colors"
+                    aria-label="Share"
+                  >
+                    <Share2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
