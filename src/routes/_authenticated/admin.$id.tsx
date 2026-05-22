@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
+
 import { useQuery } from "@tanstack/react-query";
 import { EmployeeForm } from "./admin.new";
 import { getEmployeeAnalytics } from "@/lib/analytics.functions";
@@ -21,7 +21,7 @@ function EditPage() {
 }
 
 function AnalyticsPanel({ id }: { id: string }) {
-  const fn = useServerFn(getEmployeeAnalytics);
+  const fn = getEmployeeAnalytics;
   const q = useQuery({
     queryKey: ["employee-analytics", id],
     queryFn: () => fn({ data: { id, days: 30 } }),

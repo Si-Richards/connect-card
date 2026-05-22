@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
+
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Plus, Edit2, Trash2, ExternalLink, Copy, Download, EyeOff, Eye } from "lucide-react";
@@ -17,11 +17,11 @@ export const Route = createFileRoute("/_authenticated/admin/")({
 
 function AdminList() {
   const router = useRouter();
-  const listFn = useServerFn(listEmployees);
-  const delFn = useServerFn(deleteEmployee);
-  const toggleFn = useServerFn(toggleEmployeeDisabled);
-  const adminFn = useServerFn(checkIsAdmin);
-  const analyticsFn = useServerFn(listEmployeeAnalytics);
+  const listFn = listEmployees;
+  const delFn = deleteEmployee;
+  const toggleFn = toggleEmployeeDisabled;
+  const adminFn = checkIsAdmin;
+  const analyticsFn = listEmployeeAnalytics;
 
   const adminQ = useQuery({ queryKey: ["isAdmin"], queryFn: () => adminFn({}) });
   const q = useQuery({

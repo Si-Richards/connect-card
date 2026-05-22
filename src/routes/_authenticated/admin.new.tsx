@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link, useRouter } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
+
 import { useEffect, useState } from "react";
 import { ArrowLeft, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,8 +11,8 @@ type Mode = { kind: "new" } | { kind: "edit"; id: string };
 
 export function EmployeeForm({ mode }: { mode: Mode }) {
   const nav = useNavigate();
-  const upsert = useServerFn(upsertEmployee);
-  const fetchOne = useServerFn(getEmployee);
+  const upsert = upsertEmployee;
+  const fetchOne = getEmployee;
 
   const [form, setForm] = useState<any>({
     slug: "", full_name: "", job_title: "", company: "", email: "",
