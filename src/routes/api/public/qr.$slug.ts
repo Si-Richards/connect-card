@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import QRCode from "qrcode";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export const Route = createFileRoute("/api/public/qr/$slug")({
   server: {
     handlers: {
       GET: async ({ params, request }) => {
+        const [{ default: QRCode }, { supabaseAdmin }] = await Promise.all([
+          import("qrcode"),
+          import("@/integrations/supabase/client.server"),
+        ]);
         const url = new URL(request.url);
         const format = (url.searchParams.get("format") ?? "png").toLowerCase();
         const slug = params.slug.replace(/\.(png|svg)$/i, "");
