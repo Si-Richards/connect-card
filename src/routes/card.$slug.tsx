@@ -2,7 +2,8 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { Mail, Phone, Smartphone, Globe, Linkedin, Download, QrCode, Wallet } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { recordEmployeeEvent } from "@/lib/analytics.functions";
 
 const getPublicCard = createServerFn({ method: "POST" })
   .inputValidator((input: { slug: string }) =>
@@ -26,14 +27,15 @@ const getPublicCard = createServerFn({ method: "POST" })
       .eq("id", true)
       .maybeSingle();
 
-    // fire-and-forget view increment
-    if (!employee.disabled) {
-      await supabaseAdmin.rpc("increment_employee_views", { _slug: data.slug });
-    }
     return { employee, settings };
   });
 
+const cardSearchSchema = z.object({
+  src: z.string().max(32).optional(),
+});
+
 export const Route = createFileRoute("/card/$slug")({
+  validateSearch: (s) => cardSearchSchema.parse(s),
   loader: async ({ params }) => {
     const res = await getPublicCard({ data: { slug: params.slug } });
     if (!res.employee) throw notFound();
@@ -72,8 +74,25 @@ export const Route = createFileRoute("/card/$slug")({
 
 function CardPage() {
   const { employee, settings } = Route.useLoaderData() as any;
+  const { src } = Route.useSearch();
   const e = employee;
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!e || e.disabled) return;
+    const isScan = src === "qr";
+    recordEmployeeEvent({
+      data: {
+        slug: e.slug,
+        eventType: isScan ? "scan" : "view",
+        source: src ?? null,
+        userAgent: navigator.userAgent.slice(0, 512),
+        referrer: document.referrer ? document.referrer.slice(0, 1024) : null,
+      },
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [e?.slug, src]);
+
 
   if (e.disabled) {
     return (
