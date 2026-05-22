@@ -53,12 +53,8 @@ export function EmployeeForm({ mode }: { mode: Mode }) {
   const onUpload = async (file: File) => {
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop() ?? "jpg";
-      const path = `${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("employee-photos").upload(path, file, { upsert: false });
-      if (upErr) throw upErr;
-      const { data } = supabase.storage.from("employee-photos").getPublicUrl(path);
-      update("photo_url", data.publicUrl);
+      const { url } = await api.uploadFile(file, "employee-photo");
+      update("photo_url", url);
     } catch (e: any) {
       setError(e.message);
     } finally {
