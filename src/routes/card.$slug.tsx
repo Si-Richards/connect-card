@@ -74,8 +74,25 @@ export const Route = createFileRoute("/card/$slug")({
 
 function CardPage() {
   const { employee, settings } = Route.useLoaderData() as any;
+  const { src } = Route.useSearch();
   const e = employee;
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!e || e.disabled) return;
+    const isScan = src === "qr";
+    recordEmployeeEvent({
+      data: {
+        slug: e.slug,
+        eventType: isScan ? "scan" : "view",
+        source: src ?? null,
+        userAgent: navigator.userAgent.slice(0, 512),
+        referrer: document.referrer ? document.referrer.slice(0, 1024) : null,
+      },
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [e?.slug, src]);
+
 
   if (e.disabled) {
     return (
