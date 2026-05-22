@@ -144,14 +144,7 @@ function CardPage() {
                 <Download className="w-4 h-4" />
                 Save to Contacts (vCard)
               </a>
-              <button
-                disabled
-                title="Apple Wallet requires Apple Developer certificate setup"
-                className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium border border-border text-muted-foreground bg-muted/40 cursor-not-allowed"
-              >
-                <Wallet className="w-4 h-4" />
-                Add to Apple Wallet
-              </button>
+              <WalletButton slug={e.slug} brand={brand} />
             </div>
 
             {/* Contact list */}
