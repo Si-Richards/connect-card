@@ -8,39 +8,39 @@ export const Route = createFileRoute("/api/public/wallet/$slug")({
   server: {
     handlers: {
       GET: async ({ params, request }) => {
-        const passTypeId = process.env.APPLE_PASS_TYPE_ID;
-        const teamId = process.env.APPLE_TEAM_ID;
-        const p12Base64 = process.env.APPLE_PASS_P12_BASE64;
-        const p12Password = process.env.APPLE_PASS_P12_PASSWORD;
-        const wwdrBase64 = process.env.APPLE_WWDR_BASE64;
-
-        if (!passTypeId || !teamId || !p12Base64 || !p12Password || !wwdrBase64) {
-          return new Response(
-            "Apple Wallet is not configured yet. The admin needs to upload an Apple Pass Type ID certificate.",
-            { status: 503 },
-          );
-        }
-
-        const slug = params.slug.replace(/\.pkpass$/i, "");
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const { data: e, error } = await supabaseAdmin
-          .from("employees")
-          .select("*")
-          .eq("slug", slug)
-          .eq("disabled", false)
-          .maybeSingle();
-        if (error || !e) return new Response("Not found", { status: 404 });
-
-        const { data: settings } = await supabaseAdmin
-          .from("company_settings")
-          .select("company_name, brand_color")
-          .eq("id", true)
-          .maybeSingle();
-
-        const origin = new URL(request.url).origin;
-        const cardUrl = `${origin}/card/${encodeURIComponent(slug)}`;
-
         try {
+          const passTypeId = process.env.APPLE_PASS_TYPE_ID;
+          const teamId = process.env.APPLE_TEAM_ID;
+          const p12Base64 = process.env.APPLE_PASS_P12_BASE64;
+          const p12Password = process.env.APPLE_PASS_P12_PASSWORD;
+          const wwdrBase64 = process.env.APPLE_WWDR_BASE64;
+
+          if (!passTypeId || !teamId || !p12Base64 || !p12Password || !wwdrBase64) {
+            return new Response(
+              "Apple Wallet is not configured yet. The admin needs to upload an Apple Pass Type ID certificate.",
+              { status: 503 },
+            );
+          }
+
+          const slug = params.slug.replace(/\.pkpass$/i, "");
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const { data: e, error } = await supabaseAdmin
+            .from("employees")
+            .select("*")
+            .eq("slug", slug)
+            .eq("disabled", false)
+            .maybeSingle();
+          if (error || !e) return new Response("Not found", { status: 404 });
+
+          const { data: settings } = await supabaseAdmin
+            .from("company_settings")
+            .select("company_name, brand_color")
+            .eq("id", true)
+            .maybeSingle();
+
+          const origin = new URL(request.url).origin;
+          const cardUrl = `${origin}/card/${encodeURIComponent(slug)}`;
+
           const [{ PKPass }, forge] = await Promise.all([
             import("passkit-generator"),
             import("node-forge").then((m) => m.default),
@@ -96,7 +96,6 @@ export const Route = createFileRoute("/api/public/wallet/$slug")({
             messageEncoding: "iso-8859-1",
           });
 
-          // Try to attach photo as thumbnail
           if (e.photo_url) {
             try {
               const res = await fetch(e.photo_url);
@@ -121,7 +120,10 @@ export const Route = createFileRoute("/api/public/wallet/$slug")({
           });
         } catch (err) {
           console.error("pkpass generation failed", err);
-          return new Response("Apple Wallet certificate configuration is invalid.", { status: 503 });
+          return new Response("Apple Wallet download is temporarily unavailable.", {
+            status: 503,
+            headers: { "Content-Type": "text/plain; charset=utf-8" },
+          });
         }
       },
     },
