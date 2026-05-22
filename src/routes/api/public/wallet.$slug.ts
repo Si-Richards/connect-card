@@ -119,7 +119,7 @@ export const Route = createFileRoute("/api/public/wallet/$slug")({
           });
         } catch (err) {
           console.error("pkpass generation failed", err);
-          return new Response("Could not generate Wallet pass", { status: 500 });
+          return new Response("Apple Wallet certificate configuration is invalid.", { status: 503 });
         }
       },
     },
