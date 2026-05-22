@@ -22,7 +22,7 @@ export const Route = createFileRoute("/api/public/qr/$slug")({
           if (!data) return new Response("Not found", { status: 404 });
 
           const origin = url.origin;
-          const target = `${origin}/card/${encodeURIComponent(slug)}`;
+          const target = `${origin}/card/${encodeURIComponent(slug)}?src=qr`;
           const opts = { width: 600, margin: 1, color: { dark: "#000000", light: "#ffffff" } };
 
           if (format === "svg") {
