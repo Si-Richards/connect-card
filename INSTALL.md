@@ -81,21 +81,46 @@ bun run build        # production build
 bun run start        # serve the build
 ```
 
-### 7. Apple Wallet (optional)
+### 7. Wallet passes (optional)
 
-Add these runtime secrets (Lovable: **Cloud → Secrets**; self-host: `.env`):
+All wallet env vars are read in **one place**: `src/lib/wallet-config.server.ts`.
+Add new wallet credentials there if you extend this in future.
+
+#### Apple Wallet
 
 | Key | Value |
 | --- | --- |
 | `APPLE_PASS_TYPE_ID` | e.g. `pass.co.uk.voicehost.businesscard` |
 | `APPLE_TEAM_ID` | your 10-char Apple developer team ID |
-| `APPLE_PASS_CERT_PEM` | Pass Type ID certificate (PEM) |
-| `APPLE_PASS_KEY_PEM` | Private key (PEM) |
-| `APPLE_PASS_KEY_PASSWORD` | Key passphrase (optional) |
-| `APPLE_WWDR_PEM` | Apple WWDR intermediate cert (PEM) |
+| `APPLE_PASS_P12_BASE64` | Pass Type ID `.p12` bundle, base64-encoded |
+| `APPLE_PASS_P12_PASSWORD` | passphrase for the `.p12` |
+| `APPLE_WWDR_BASE64` | Apple WWDR intermediate cert (DER or PEM), base64-encoded |
 
-Without these, `/api/public/wallet/<slug>` returns `503` and the "Add to
-Apple Wallet" button shows as unavailable.
+#### Google Wallet
+
+1. In the [Google Wallet Console](https://pay.google.com/business/console/), create
+   an Issuer account and note its numeric **Issuer ID**.
+2. In Google Cloud, create a **service account** with the *Wallet Object Issuer*
+   role, generate a JSON key, and authorise that service account in the Wallet
+   Console.
+3. Create a **GenericClass** with id `<issuerId>.business_card` (or any suffix
+   you set via `GOOGLE_WALLET_CLASS_SUFFIX`). The simplest way is a one-off
+   POST to `https://walletobjects.googleapis.com/walletobjects/v1/genericClass`
+   with the minimal class body — see Google's quickstart.
+
+Then add these runtime secrets:
+
+| Key | Value |
+| --- | --- |
+| `GOOGLE_WALLET_ISSUER_ID` | numeric issuer ID from the console |
+| `GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL` | `xxx@yyy.iam.gserviceaccount.com` |
+| `GOOGLE_WALLET_SERVICE_ACCOUNT_PRIVATE_KEY` | the `private_key` field from the JSON key (newlines OK as `\n`) |
+| `GOOGLE_WALLET_CLASS_SUFFIX` | *optional*, defaults to `business_card` |
+
+The card page calls `/api/public/wallet-status` on mount to decide which
+buttons to render. If Apple is unset, `/api/public/wallet/<slug>` returns
+`503`; same for Google at `/api/public/google-wallet/<slug>`. When both are
+unset, the card shows a single "Wallet passes not configured yet" notice.
 
 ---
 
