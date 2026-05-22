@@ -12,7 +12,7 @@ const cardSearchSchema = z.object({
 export const Route = createFileRoute("/card/$slug")({
   validateSearch: (s) => cardSearchSchema.parse(s),
   loader: async ({ params }) => {
-    const res = await getPublicCard({ data: { slug: params.slug } });
+    const res = await api.getEmployeeBySlug(params.slug);
     if (!res.employee) throw notFound();
     return res;
   },
