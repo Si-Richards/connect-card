@@ -1,63 +1,19 @@
-import { createFileRoute, Outlet, Link, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { createFileRoute, Outlet, Link } from "@tanstack/react-router";
 
+/**
+ * Auth was removed when this project was switched to self-hosted mode.
+ * The admin section is now open — re-add a guard here if you need one.
+ */
 export const Route = createFileRoute("/_authenticated")({
-  ssr: false,
-  pendingComponent: AuthPending,
-  component: AuthLayout,
+  component: AdminLayout,
 });
 
-function AuthPending() {
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <div className="text-sm text-muted-foreground">Loading admin…</div>
-    </div>
-  );
-}
-
-function AuthLayout() {
-  const router = useRouter();
-  const [authState, setAuthState] = useState<"checking" | "signed-in" | "signed-out">("checking");
-
-  useEffect(() => {
-    let cancelled = false;
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthState(session?.user ? "signed-in" : "signed-out");
-    });
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (!cancelled) setAuthState(data.session?.user ? "signed-in" : "signed-out");
-    }).catch(() => {
-      if (!cancelled) setAuthState("signed-out");
-    });
-
-    return () => {
-      cancelled = true;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (authState === "signed-out") router.navigate({ to: "/login" });
-  }, [authState, router]);
-
-  if (authState !== "signed-in") return <AuthPending />;
-
+function AdminLayout() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
         <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
           <Link to="/admin" className="font-semibold tracking-tight">CardKit Admin</Link>
-          <button
-            onClick={async () => {
-              await supabase.auth.signOut();
-              router.navigate({ to: "/login" });
-            }}
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Sign out
-          </button>
         </div>
       </header>
       <Outlet />
