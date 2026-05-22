@@ -9,16 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CardSlugRouteImport } from './routes/card.$slug'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as ApiPublicHealthcheckRouteImport } from './routes/api/public/healthcheck'
 import { Route as ApiPublicErrorsRouteImport } from './routes/api/public/errors'
+import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminNewRouteImport } from './routes/_authenticated/admin.new'
 import { Route as AuthenticatedAdminAnalyticsRouteImport } from './routes/_authenticated/admin.analytics'
 import { Route as AuthenticatedAdminIdRouteImport } from './routes/_authenticated/admin.$id'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -48,6 +55,12 @@ const ApiPublicErrorsRoute = ApiPublicErrorsRouteImport.update({
   path: '/api/public/errors',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAdminSettingsRoute =
+  AuthenticatedAdminSettingsRouteImport.update({
+    id: '/admin/settings',
+    path: '/admin/settings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminNewRoute = AuthenticatedAdminNewRouteImport.update({
   id: '/admin/new',
   path: '/admin/new',
@@ -67,20 +80,24 @@ const AuthenticatedAdminIdRoute = AuthenticatedAdminIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/card/$slug': typeof CardSlugRoute
   '/admin/$id': typeof AuthenticatedAdminIdRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/new': typeof AuthenticatedAdminNewRoute
+  '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/api/public/errors': typeof ApiPublicErrorsRoute
   '/api/public/healthcheck': typeof ApiPublicHealthcheckRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/card/$slug': typeof CardSlugRoute
   '/admin/$id': typeof AuthenticatedAdminIdRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/new': typeof AuthenticatedAdminNewRoute
+  '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/api/public/errors': typeof ApiPublicErrorsRoute
   '/api/public/healthcheck': typeof ApiPublicHealthcheckRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -89,10 +106,12 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/login': typeof LoginRoute
   '/card/$slug': typeof CardSlugRoute
   '/_authenticated/admin/$id': typeof AuthenticatedAdminIdRoute
   '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/_authenticated/admin/new': typeof AuthenticatedAdminNewRoute
+  '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/api/public/errors': typeof ApiPublicErrorsRoute
   '/api/public/healthcheck': typeof ApiPublicHealthcheckRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -101,20 +120,24 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/login'
     | '/card/$slug'
     | '/admin/$id'
     | '/admin/analytics'
     | '/admin/new'
+    | '/admin/settings'
     | '/api/public/errors'
     | '/api/public/healthcheck'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/login'
     | '/card/$slug'
     | '/admin/$id'
     | '/admin/analytics'
     | '/admin/new'
+    | '/admin/settings'
     | '/api/public/errors'
     | '/api/public/healthcheck'
     | '/admin'
@@ -122,10 +145,12 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/login'
     | '/card/$slug'
     | '/_authenticated/admin/$id'
     | '/_authenticated/admin/analytics'
     | '/_authenticated/admin/new'
+    | '/_authenticated/admin/settings'
     | '/api/public/errors'
     | '/api/public/healthcheck'
     | '/_authenticated/admin/'
@@ -134,6 +159,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  LoginRoute: typeof LoginRoute
   CardSlugRoute: typeof CardSlugRoute
   ApiPublicErrorsRoute: typeof ApiPublicErrorsRoute
   ApiPublicHealthcheckRoute: typeof ApiPublicHealthcheckRoute
@@ -141,6 +167,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -183,6 +216,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicErrorsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/admin/settings': {
+      id: '/_authenticated/admin/settings'
+      path: '/admin/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin/new': {
       id: '/_authenticated/admin/new'
       path: '/admin/new'
@@ -211,6 +251,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminIdRoute: typeof AuthenticatedAdminIdRoute
   AuthenticatedAdminAnalyticsRoute: typeof AuthenticatedAdminAnalyticsRoute
   AuthenticatedAdminNewRoute: typeof AuthenticatedAdminNewRoute
+  AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
@@ -218,6 +259,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminIdRoute: AuthenticatedAdminIdRoute,
   AuthenticatedAdminAnalyticsRoute: AuthenticatedAdminAnalyticsRoute,
   AuthenticatedAdminNewRoute: AuthenticatedAdminNewRoute,
+  AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }
 
@@ -227,6 +269,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  LoginRoute: LoginRoute,
   CardSlugRoute: CardSlugRoute,
   ApiPublicErrorsRoute: ApiPublicErrorsRoute,
   ApiPublicHealthcheckRoute: ApiPublicHealthcheckRoute,
@@ -234,3 +277,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
