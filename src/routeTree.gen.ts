@@ -9,38 +9,152 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CardSlugRouteImport } from './routes/card.$slug'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as AuthenticatedAdminNewRouteImport } from './routes/_authenticated/admin.new'
+import { Route as AuthenticatedAdminIdRouteImport } from './routes/_authenticated/admin.$id'
+import { Route as ApiPublicVcardSlugRouteImport } from './routes/api/public/vcard.$slug'
+import { Route as ApiPublicQrSlugRouteImport } from './routes/api/public/qr.$slug'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRoute = AuthenticatedRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CardSlugRoute = CardSlugRouteImport.update({
+  id: '/card/$slug',
+  path: '/card/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAdminNewRoute = AuthenticatedAdminNewRouteImport.update({
+  id: '/admin/new',
+  path: '/admin/new',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedAdminIdRoute = AuthenticatedAdminIdRouteImport.update({
+  id: '/admin/$id',
+  path: '/admin/$id',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const ApiPublicVcardSlugRoute = ApiPublicVcardSlugRouteImport.update({
+  id: '/api/public/vcard/$slug',
+  path: '/api/public/vcard/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicQrSlugRoute = ApiPublicQrSlugRouteImport.update({
+  id: '/api/public/qr/$slug',
+  path: '/api/public/qr/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/card/$slug': typeof CardSlugRoute
+  '/admin/$id': typeof AuthenticatedAdminIdRoute
+  '/admin/new': typeof AuthenticatedAdminNewRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/api/public/qr/$slug': typeof ApiPublicQrSlugRoute
+  '/api/public/vcard/$slug': typeof ApiPublicVcardSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/card/$slug': typeof CardSlugRoute
+  '/admin/$id': typeof AuthenticatedAdminIdRoute
+  '/admin/new': typeof AuthenticatedAdminNewRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
+  '/api/public/qr/$slug': typeof ApiPublicQrSlugRoute
+  '/api/public/vcard/$slug': typeof ApiPublicVcardSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/login': typeof LoginRoute
+  '/card/$slug': typeof CardSlugRoute
+  '/_authenticated/admin/$id': typeof AuthenticatedAdminIdRoute
+  '/_authenticated/admin/new': typeof AuthenticatedAdminNewRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/api/public/qr/$slug': typeof ApiPublicQrSlugRoute
+  '/api/public/vcard/$slug': typeof ApiPublicVcardSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/card/$slug'
+    | '/admin/$id'
+    | '/admin/new'
+    | '/admin/'
+    | '/api/public/qr/$slug'
+    | '/api/public/vcard/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/card/$slug'
+    | '/admin/$id'
+    | '/admin/new'
+    | '/admin'
+    | '/api/public/qr/$slug'
+    | '/api/public/vcard/$slug'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/login'
+    | '/card/$slug'
+    | '/_authenticated/admin/$id'
+    | '/_authenticated/admin/new'
+    | '/_authenticated/admin/'
+    | '/api/public/qr/$slug'
+    | '/api/public/vcard/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  LoginRoute: typeof LoginRoute
+  CardSlugRoute: typeof CardSlugRoute
+  ApiPublicQrSlugRoute: typeof ApiPublicQrSlugRoute
+  ApiPublicVcardSlugRoute: typeof ApiPublicVcardSlugRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +162,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/card/$slug': {
+      id: '/card/$slug'
+      path: '/card/$slug'
+      fullPath: '/card/$slug'
+      preLoaderRoute: typeof CardSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin/new': {
+      id: '/_authenticated/admin/new'
+      path: '/admin/new'
+      fullPath: '/admin/new'
+      preLoaderRoute: typeof AuthenticatedAdminNewRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/admin/$id': {
+      id: '/_authenticated/admin/$id'
+      path: '/admin/$id'
+      fullPath: '/admin/$id'
+      preLoaderRoute: typeof AuthenticatedAdminIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/api/public/vcard/$slug': {
+      id: '/api/public/vcard/$slug'
+      path: '/api/public/vcard/$slug'
+      fullPath: '/api/public/vcard/$slug'
+      preLoaderRoute: typeof ApiPublicVcardSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/qr/$slug': {
+      id: '/api/public/qr/$slug'
+      path: '/api/public/qr/$slug'
+      fullPath: '/api/public/qr/$slug'
+      preLoaderRoute: typeof ApiPublicQrSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AuthenticatedRouteChildren {
+  AuthenticatedAdminIdRoute: typeof AuthenticatedAdminIdRoute
+  AuthenticatedAdminNewRoute: typeof AuthenticatedAdminNewRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+}
+
+const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedAdminIdRoute: AuthenticatedAdminIdRoute,
+  AuthenticatedAdminNewRoute: AuthenticatedAdminNewRoute,
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+}
+
+const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
+  AuthenticatedRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  LoginRoute: LoginRoute,
+  CardSlugRoute: CardSlugRoute,
+  ApiPublicQrSlugRoute: ApiPublicQrSlugRoute,
+  ApiPublicVcardSlugRoute: ApiPublicVcardSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
