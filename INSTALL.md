@@ -21,6 +21,26 @@ mysql -u bcuser -p business_card < schema.sql
 
 The schema lives in [`schema.sql`](./schema.sql) at the repo root.
 
+## 1b. Bootstrap the first admin user
+
+The admin dashboard is gated by the `admin` role in the `user_roles` table. Run the bootstrap script once after applying the schema so you can sign in immediately:
+
+```bash
+cd /opt/business-card/selfhost
+# Either pass on the CLI…
+npm run create-admin -- admin@example.com 'a-strong-password'
+
+# …or via env vars (handy for CI / first-boot scripts)
+ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD='a-strong-password' npm run create-admin
+```
+
+The script:
+- creates the `users` row (or **resets the password** if the email already exists — also use this to recover from a lockout)
+- guarantees the `admin` row in `user_roles` (idempotent, safe to re-run on every deploy)
+- requires `DATABASE_URL` from `selfhost/.env`, and a password of at least 8 chars
+
+Sign in at `https://card.example.com/login` with that email and you'll land on `/admin`.
+
 ## 2. Backend (Express API)
 
 The Express bundle lives in `selfhost/`.
