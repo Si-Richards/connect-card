@@ -1,22 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PKPass } from "passkit-generator";
+import forge from "node-forge";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-function missingSecrets() {
-  return (
-    !process.env.APPLE_PASS_P12_BASE64 ||
-    !process.env.APPLE_PASS_P12_PASSWORD ||
-    !process.env.APPLE_PASS_TYPE_ID ||
-    !process.env.APPLE_TEAM_ID ||
-    !process.env.APPLE_WWDR_BASE64
-  );
-}
+const ICON_PNG = "iVBORw0KGgoAAAANSUhEUgAAAB0AAAAdCAYAAABWk2cPAAAAL0lEQVR4nO3NQREAIAgAMKQATzrYv5+U8HhtBXaq74tluR1KpVKpVCqVSqVS6QcD4gQBiVHsscUAAAAASUVORK5CYII=";
+const ICON_2X_PNG = "iVBORw0KGgoAAAANSUhEUgAAADoAAAA6CAYAAADhu0ooAAAAY0lEQVR4nO3PQRGAMADAsDEDe+IB//6Yi3EXGgXtte7nHT8wvw44pVFNo5pGNY1qGtU0qmlU06imUU2jmkY1jWoa1TSqaVTTqKZRTaOaRjWNahrVNKppVNOoplFNo5pGNY1qNj7sAcMJQBnNAAAAAElFTkSuQmCC";
+const ICON_3X_PNG = "iVBORw0KGgoAAAANSUhEUgAAAFcAAABXCAYAAABxyNlsAAAA3UlEQVR4nO3QQQ3AIADAQMDAnnjAv79NRUOy3CloOp993kFi3Q74M3ND5obMDZkbMjdkbsjckLkhc0PmhswNmRsyN2RuyNyQuSFzQ+aGzA2ZGzI3ZG7I3JC5IXND5obMDZkbMjdkbsjckLkhc0PmhswNmRsyN2RuyNyQuSFzQ+aGzA2ZGzI3ZG7I3JC5IXND5obMDZkbMjdkbsjckLkhc0PmhswNmRsyN2RuyNyQuSFzQ+aGzA2ZGzI3ZG7I3JC5IXND5obMDZkbMjdkbsjckLkhS2zoy++gcaVJAAAAAElFTkSuQmCC";
 
 export const Route = createFileRoute("/api/public/wallet/$slug")({
   server: {
     handlers: {
       GET: async ({ params, request }) => {
-        if (missingSecrets()) {
+        const passTypeId = process.env.APPLE_PASS_TYPE_ID;
+        const teamId = process.env.APPLE_TEAM_ID;
+        const p12Base64 = process.env.APPLE_PASS_P12_BASE64;
+        const p12Password = process.env.APPLE_PASS_P12_PASSWORD;
+        const wwdrBase64 = process.env.APPLE_WWDR_BASE64;
+
+        if (!passTypeId || !teamId || !p12Base64 || !p12Password || !wwdrBase64) {
           return new Response(
             "Apple Wallet is not configured yet. The admin needs to upload an Apple Pass Type ID certificate.",
             { status: 503 },
@@ -42,21 +43,21 @@ export const Route = createFileRoute("/api/public/wallet/$slug")({
         const cardUrl = `${origin}/card/${encodeURIComponent(slug)}`;
 
         try {
-          const signerCert = Buffer.from(process.env.APPLE_PASS_P12_BASE64!, "base64");
-          const wwdr = Buffer.from(process.env.APPLE_WWDR_BASE64!, "base64");
+          const { signerCert, signerKey } = extractPassCertificate(p12Base64, p12Password);
+          const wwdr = certificateToPem(wwdrBase64);
 
           const pass = new PKPass(
             {},
             {
               wwdr,
               signerCert,
-              signerKey: signerCert,
-              signerKeyPassphrase: process.env.APPLE_PASS_P12_PASSWORD!,
+              signerKey,
+              signerKeyPassphrase: p12Password,
             },
             {
               formatVersion: 1,
-              passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID!,
-              teamIdentifier: process.env.APPLE_TEAM_ID!,
+              passTypeIdentifier: passTypeId,
+              teamIdentifier: teamId,
               organizationName: settings?.company_name || e.company || "Business Card",
               serialNumber: e.id,
               description: `${e.full_name} — Business Card`,
@@ -67,6 +68,9 @@ export const Route = createFileRoute("/api/public/wallet/$slug")({
           );
 
           pass.type = "generic";
+          pass.addBuffer("icon.png", Buffer.from(ICON_PNG, "base64"));
+          pass.addBuffer("icon@2x.png", Buffer.from(ICON_2X_PNG, "base64"));
+          pass.addBuffer("icon@3x.png", Buffer.from(ICON_3X_PNG, "base64"));
 
           pass.headerFields.push({ key: "company", label: "Company", value: e.company || "" });
           pass.primaryFields.push({ key: "name", label: "Name", value: e.full_name });
@@ -115,12 +119,40 @@ export const Route = createFileRoute("/api/public/wallet/$slug")({
           });
         } catch (err) {
           console.error("pkpass generation failed", err);
-          return new Response("Could not generate Wallet pass", { status: 500 });
+          return new Response("Apple Wallet certificate configuration is invalid.", { status: 503 });
         }
       },
     },
   },
 });
+
+function extractPassCertificate(p12Base64: string, password: string) {
+  const bytes = forge.util.createBuffer(Buffer.from(p12Base64, "base64").toString("binary"));
+  const asn1 = forge.asn1.fromDer(bytes);
+  const p12 = forge.pkcs12.pkcs12FromAsn1(asn1, false, password);
+  const certBag = p12.getBags({ bagType: forge.pki.oids.certBag })[forge.pki.oids.certBag]?.[0];
+  const keyBag =
+    p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[
+      forge.pki.oids.pkcs8ShroudedKeyBag
+    ]?.[0] ?? p12.getBags({ bagType: forge.pki.oids.keyBag })[forge.pki.oids.keyBag]?.[0];
+
+  if (!certBag?.cert || !keyBag?.key) {
+    throw new Error("Apple Pass certificate must contain both certificate and private key.");
+  }
+
+  return {
+    signerCert: forge.pki.certificateToPem(certBag.cert),
+    signerKey: forge.pki.privateKeyToPem(keyBag.key),
+  };
+}
+
+function certificateToPem(base64Value: string): string {
+  const decoded = Buffer.from(base64Value, "base64");
+  const text = decoded.toString("utf-8");
+  if (text.includes("-----BEGIN CERTIFICATE-----")) return text;
+  const certificate = forge.pki.certificateFromAsn1(forge.asn1.fromDer(decoded.toString("binary")));
+  return forge.pki.certificateToPem(certificate);
+}
 
 function hexToRgbString(hex: string): string {
   const m = hex.replace("#", "").match(/^([0-9a-f]{6})$/i);
