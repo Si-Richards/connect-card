@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CardSlugRouteImport } from './routes/card.$slug'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as ApiPublicWalletStatusRouteImport } from './routes/api/public/wallet-status'
 import { Route as ApiPublicHealthcheckRouteImport } from './routes/api/public/healthcheck'
 import { Route as ApiPublicErrorsRouteImport } from './routes/api/public/errors'
 import { Route as AuthenticatedAdminNewRouteImport } from './routes/_authenticated/admin.new'
@@ -46,6 +47,11 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ApiPublicWalletStatusRoute = ApiPublicWalletStatusRouteImport.update({
+  id: '/api/public/wallet-status',
+  path: '/api/public/wallet-status',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicHealthcheckRoute = ApiPublicHealthcheckRouteImport.update({
   id: '/api/public/healthcheck',
@@ -97,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/admin/new': typeof AuthenticatedAdminNewRoute
   '/api/public/errors': typeof ApiPublicErrorsRoute
   '/api/public/healthcheck': typeof ApiPublicHealthcheckRoute
+  '/api/public/wallet-status': typeof ApiPublicWalletStatusRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/google-wallet/$slug': typeof ApiPublicGoogleWalletSlugRoute
   '/api/public/qr/$slug': typeof ApiPublicQrSlugRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/admin/new': typeof AuthenticatedAdminNewRoute
   '/api/public/errors': typeof ApiPublicErrorsRoute
   '/api/public/healthcheck': typeof ApiPublicHealthcheckRoute
+  '/api/public/wallet-status': typeof ApiPublicWalletStatusRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/api/public/google-wallet/$slug': typeof ApiPublicGoogleWalletSlugRoute
   '/api/public/qr/$slug': typeof ApiPublicQrSlugRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/new': typeof AuthenticatedAdminNewRoute
   '/api/public/errors': typeof ApiPublicErrorsRoute
   '/api/public/healthcheck': typeof ApiPublicHealthcheckRoute
+  '/api/public/wallet-status': typeof ApiPublicWalletStatusRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/google-wallet/$slug': typeof ApiPublicGoogleWalletSlugRoute
   '/api/public/qr/$slug': typeof ApiPublicQrSlugRoute
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/admin/new'
     | '/api/public/errors'
     | '/api/public/healthcheck'
+    | '/api/public/wallet-status'
     | '/admin/'
     | '/api/public/google-wallet/$slug'
     | '/api/public/qr/$slug'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/admin/new'
     | '/api/public/errors'
     | '/api/public/healthcheck'
+    | '/api/public/wallet-status'
     | '/admin'
     | '/api/public/google-wallet/$slug'
     | '/api/public/qr/$slug'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/new'
     | '/api/public/errors'
     | '/api/public/healthcheck'
+    | '/api/public/wallet-status'
     | '/_authenticated/admin/'
     | '/api/public/google-wallet/$slug'
     | '/api/public/qr/$slug'
@@ -186,6 +198,7 @@ export interface RootRouteChildren {
   CardSlugRoute: typeof CardSlugRoute
   ApiPublicErrorsRoute: typeof ApiPublicErrorsRoute
   ApiPublicHealthcheckRoute: typeof ApiPublicHealthcheckRoute
+  ApiPublicWalletStatusRoute: typeof ApiPublicWalletStatusRoute
   ApiPublicGoogleWalletSlugRoute: typeof ApiPublicGoogleWalletSlugRoute
   ApiPublicQrSlugRoute: typeof ApiPublicQrSlugRoute
   ApiPublicVcardSlugRoute: typeof ApiPublicVcardSlugRoute
@@ -228,6 +241,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/wallet-status': {
+      id: '/api/public/wallet-status'
+      path: '/api/public/wallet-status'
+      fullPath: '/api/public/wallet-status'
+      preLoaderRoute: typeof ApiPublicWalletStatusRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/healthcheck': {
       id: '/api/public/healthcheck'
@@ -310,6 +330,7 @@ const rootRouteChildren: RootRouteChildren = {
   CardSlugRoute: CardSlugRoute,
   ApiPublicErrorsRoute: ApiPublicErrorsRoute,
   ApiPublicHealthcheckRoute: ApiPublicHealthcheckRoute,
+  ApiPublicWalletStatusRoute: ApiPublicWalletStatusRoute,
   ApiPublicGoogleWalletSlugRoute: ApiPublicGoogleWalletSlugRoute,
   ApiPublicQrSlugRoute: ApiPublicQrSlugRoute,
   ApiPublicVcardSlugRoute: ApiPublicVcardSlugRoute,
