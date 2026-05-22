@@ -83,7 +83,7 @@ bun run start        # serve the build
 
 ### 7. Wallet passes (optional)
 
-All wallet env vars are read in **one place**: `src/lib/wallet-config.server.ts`.
+All wallet env vars are read in **one place**: `src/lib/config.server.ts`.
 Add new wallet credentials there if you extend this in future.
 
 #### Apple Wallet
