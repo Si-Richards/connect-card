@@ -1,6 +1,11 @@
 import "./lib/error-capture";
 
-import { consumeLastCapturedError } from "./lib/error-capture";
+import {
+  consumeLastCapturedError,
+  generateRequestId,
+  reportError,
+  toCapturedError,
+} from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 
 type ServerEntry = {
@@ -18,10 +23,13 @@ async function getServerEntry(): Promise<ServerEntry> {
   return serverEntryPromise;
 }
 
-function brandedErrorResponse(): Response {
-  return new Response(renderErrorPage(), {
+function brandedErrorResponse(requestId: string): Response {
+  return new Response(renderErrorPage(requestId), {
     status: 500,
-    headers: { "content-type": "text/html; charset=utf-8" },
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "x-request-id": requestId,
+    },
   });
 }
 
@@ -50,9 +58,11 @@ function isCatastrophicSsrErrorBody(body: string, responseStatus: number): boole
   );
 }
 
-// h3 swallows in-handler throws into a normal 500 Response with body
-// {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
-async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
+async function normalizeCatastrophicSsrResponse(
+  response: Response,
+  requestId: string,
+  request: Request,
+): Promise<Response> {
   if (response.status < 500) return response;
   const contentType = response.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) return response;
@@ -62,19 +72,36 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
     return response;
   }
 
-  console.error(consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`));
-  return brandedErrorResponse();
+  const raw = consumeLastCapturedError() ?? new Error(`h3 swallowed SSR error: ${body}`);
+  const captured = toCapturedError(raw, {
+    requestId,
+    url: request.url,
+    method: request.method,
+  });
+  reportError(captured);
+  return brandedErrorResponse(requestId);
 }
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const requestId = generateRequestId();
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      const normalized = await normalizeCatastrophicSsrResponse(response, requestId, request);
+      // Echo request ID on every response so it's recoverable from the client.
+      if (!normalized.headers.has("x-request-id")) {
+        normalized.headers.set("x-request-id", requestId);
+      }
+      return normalized;
     } catch (error) {
-      console.error(error);
-      return brandedErrorResponse();
+      const captured = toCapturedError(error, {
+        requestId,
+        url: request.url,
+        method: request.method,
+      });
+      reportError(captured);
+      return brandedErrorResponse(requestId);
     }
   },
 };
