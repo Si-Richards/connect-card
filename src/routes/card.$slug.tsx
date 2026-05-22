@@ -16,18 +16,64 @@ export const Route = createFileRoute("/card/$slug")({
     if (!res.employee) throw notFound();
     return res;
   },
-  head: ({ loaderData }) => {
+  head: ({ loaderData, params }) => {
     const e = loaderData?.employee;
-    if (!e) return { meta: [{ title: "Card not found" }] };
-    const title = `${e.full_name}${e.job_title ? ` — ${e.job_title}` : ""}${e.company ? ` · ${e.company}` : ""}`;
-    const desc = `Save ${e.full_name}'s contact details to your phone.`;
+    const path = `/card/${params.slug}`;
+    if (!e) {
+      return {
+        meta: [
+          { title: "Card not found" },
+          { name: "robots", content: "noindex" },
+        ],
+        links: [{ rel: "canonical", href: path }],
+      };
+    }
+    const name = e.full_name;
+    const role = [e.job_title, e.company].filter(Boolean).join(" · ");
+    const title = role ? `${name} — ${role}` : name;
+    const desc = `Save ${name}'s contact details${e.company ? ` at ${e.company}` : ""} to your phone — vCard, Apple & Google Wallet supported.`;
+    const firstName = name.split(/\s+/)[0] ?? "";
+    const lastName = name.split(/\s+/).slice(1).join(" ");
     return {
       meta: [
         { title },
         { name: "description", content: desc },
+        { name: "author", content: name },
+        { property: "og:type", content: "profile" },
         { property: "og:title", content: title },
         { property: "og:description", content: desc },
-        ...(e.photo_url ? [{ property: "og:image", content: e.photo_url }] : []),
+        { property: "og:url", content: path },
+        { property: "profile:first_name", content: firstName },
+        { property: "profile:last_name", content: lastName },
+        { name: "twitter:card", content: e.photo_url ? "summary_large_image" : "summary" },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: desc },
+        ...(e.photo_url
+          ? [
+              { property: "og:image", content: e.photo_url },
+              { property: "og:image:alt", content: `${name} profile photo` },
+              { name: "twitter:image", content: e.photo_url },
+            ]
+          : []),
+        ...(e.disabled ? [{ name: "robots", content: "noindex" }] : []),
+      ],
+      links: [{ rel: "canonical", href: path }],
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Person",
+            name,
+            jobTitle: e.job_title || undefined,
+            worksFor: e.company ? { "@type": "Organization", name: e.company } : undefined,
+            email: e.email || undefined,
+            telephone: e.mobile || e.office_phone || undefined,
+            url: e.website || undefined,
+            image: e.photo_url || undefined,
+            sameAs: e.linkedin ? [e.linkedin] : undefined,
+          }),
+        },
       ],
     };
   },
