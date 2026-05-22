@@ -21,7 +21,7 @@ function Landing() {
             to="/admin"
             className="text-sm font-medium rounded-md px-4 py-2 bg-primary text-primary-foreground hover:opacity-90"
           >
-            Admin sign in
+            Open admin
           </Link>
         </div>
       </header>
