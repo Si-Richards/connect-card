@@ -161,34 +161,34 @@ function AnalyticsPage() {
               <AreaChart data={series} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
                 <defs>
                   <linearGradient id="g-views" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                    <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="g-scans" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                    <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="g-vcards" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="#f59e0b" stopOpacity={0} />
+                    <stop offset="0%" stopColor="var(--chart-3)" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="var(--chart-3)" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="g-wallets" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0} />
+                    <stop offset="0%" stopColor="var(--chart-4)" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="var(--chart-4)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} tickFormatter={(d) => d.slice(5)} />
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip
-                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-                  labelStyle={{ color: "hsl(var(--foreground))" }}
+                  contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12, color: "var(--foreground)" }}
+                  labelStyle={{ color: "var(--foreground)" }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Area type="monotone" dataKey="views" name="Views" stroke="#3b82f6" fill="url(#g-views)" strokeWidth={2} />
-                <Area type="monotone" dataKey="scans" name="QR scans" stroke="#10b981" fill="url(#g-scans)" strokeWidth={2} />
-                <Area type="monotone" dataKey="vcards" name="vCard" stroke="#f59e0b" fill="url(#g-vcards)" strokeWidth={2} />
-                <Area type="monotone" dataKey="wallets" name="Wallet" stroke="#8b5cf6" fill="url(#g-wallets)" strokeWidth={2} />
+                <Area type="monotone" dataKey="views" name="Views" stroke="var(--chart-1)" fill="url(#g-views)" strokeWidth={2} />
+                <Area type="monotone" dataKey="scans" name="QR scans" stroke="var(--chart-2)" fill="url(#g-scans)" strokeWidth={2} />
+                <Area type="monotone" dataKey="vcards" name="vCard" stroke="var(--chart-3)" fill="url(#g-vcards)" strokeWidth={2} />
+                <Area type="monotone" dataKey="wallets" name="Wallet" stroke="var(--chart-4)" fill="url(#g-wallets)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           )}
