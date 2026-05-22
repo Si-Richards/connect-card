@@ -1,43 +1,59 @@
+# Apply review fixes
 
-## Plan: Address all 6 next moves from the review
+Frontend-only changes (plus one backend note for the user). No DB migrations.
 
-### 1. Re-enable admin auth end-to-end
-- Create `src/routes/login.tsx` — email/password form posting to backend `/api/auth/login`, stores JWT in localStorage, redirects to `/admin`.
-- Rewrite `src/routes/_authenticated/route.tsx` with a real `beforeLoad` guard: check for stored JWT, verify via `/api/auth/me`, redirect to `/login` if missing/invalid. Add logout button in header.
-- Update `src/lib/api.ts` fetch helper to attach `Authorization: Bearer <token>` header on all admin requests and to throw on 401 (triggering redirect).
-- Restore `requireAdmin` middleware on `selfhost/server/routes/upload.ts` `POST /` route.
-- Replace hardcoded `checkIsAdmin()` with a real handler that returns `{ isAdmin: true }` only when `req.user` exists and has admin role.
+## 1. Delete dead Supabase integration
 
-### 2. Fix `admin.$id.tsx` analytics panel
-- Read `vcards` and `wallets` from the new `/api/analytics/employees/:id` response and render alongside views/scans in the KPI row.
-- Replace the broken `r.source` column in the recent-events table with `r.user_agent` (truncated) and show the proper event type label for all 4 types.
+- Delete `src/integrations/supabase/` (all 5 files: `auth-attacher.ts`, `auth-middleware.ts`, `client.server.ts`, `client.ts`, `types.ts`).
+- Remove `@supabase/supabase-js` from `package.json` dependencies.
+- Verify no remaining imports with `rg "integrations/supabase|@supabase/supabase-js" src`.
 
-### 3. Build company settings admin page
-- Create `src/routes/_authenticated/admin.settings.tsx` with a form for `company_name`, `brand_color` (color picker), `logo_url` (with upload via existing `/api/upload`).
-- Load current settings via `GET /api/settings`, save via `PATCH /api/settings`.
-- Add "Settings" link to the admin header in `_authenticated/route.tsx`.
+## 2. Remove the public errors dump endpoint
 
-### 4. Delete dead Supabase integration
-- Remove `@supabase/supabase-js` from `package.json`.
-- Delete unused files under `src/integrations/supabase/` that aren't auto-managed and aren't referenced anywhere in `src/`.
-- Verify no remaining imports via grep before deleting.
+- Delete `src/routes/api/public/errors.ts` (publicly accessible internal error dump — security risk).
+- Delete the now-unused `src/lib/error-capture.ts` if nothing else imports it (check first).
 
-### 5. Add Zod validation + basic rate-limiting on `/api/public/events`
-- Install `zod` in `selfhost/` and validate the event payload (event_type enum, slug format/length, optional source/user_agent length caps).
-- Add a simple in-memory IP+slug rate limiter (e.g. 30 events / minute / IP) in `selfhost/server/routes/public.ts` for the events endpoint only. Reject with 429 on overflow.
-- Note: this is ad-hoc per the no-backend-rate-limiting directive, but the user explicitly asked for it.
+## 3. Move auth gate into `beforeLoad`
 
-### 6. Polish
-- Update `src/routes/__root.tsx` (or index `head()`) to replace "Lovable App" title/description with CardKit branding.
-- Move `passkit-generator`, `node-forge`, `qrcode` from root `package.json` dependencies to `selfhost/package.json` (they're only used server-side).
-- Refactor `admin.analytics.tsx` recharts colors to use CSS variables from `src/styles.css` (`hsl(var(--primary))` etc.) instead of hardcoded hex.
+Rewrite `src/routes/_authenticated/route.tsx`:
+- Add `beforeLoad` that calls `api.me()` via the router's `queryClient` (`ensureQueryData`), throws `redirect({ to: "/login", search: { redirect: location.href } })` on 401/403 or non-admin.
+- Component reads the cached user via `useSuspenseQuery` (or `useQuery` with `initialData`) — no more `useEffect` redirects, no flash.
 
-### Out of scope (explicitly skipping)
-- Deleting one of the two `schema.sql` files — needs user decision on canonical location.
-- Removing the unreachable `src/routes/api/public/{errors,healthcheck}.ts` — harmless and may be useful if SSR mode is re-enabled.
-- `INSTALL.md` `/login` reference — will be valid once step 1 lands.
+Wire `queryClient` into the router context (already present per `__root.tsx`'s `createRootRouteWithContext<{ queryClient: QueryClient }>`).
 
-### Technical notes
-- Backend changes live in `selfhost/` and require user rebuild/redeploy to take effect; I'll note this clearly at the end.
-- Auth flow uses the existing bcrypt+JWT scaffolding already in `selfhost/server/`; no new auth library needed.
-- No database migrations required.
+Drop redundant `checkIsAdmin` calls:
+- `src/routes/_authenticated/admin.index.tsx`: remove `adminQ` + `adminFn`, run `employees`/`analytics` queries unconditionally (layout already gates).
+- `src/routes/_authenticated/admin.analytics.tsx`: same — remove `adminQ` and `enabled: enabled` gating.
+- `src/lib/employees.functions.ts`: keep `checkIsAdmin` export (used elsewhere) or remove if no callers remain after the refactor.
+
+## 4. Unify chart + stat colors on design tokens
+
+In `src/routes/_authenticated/admin.analytics.tsx`:
+- `StatCard` `tone` prop: replace `bg-blue-100 text-blue-700` etc. with semantic tints driven by `--chart-1..4`. Use inline `style={{ background: "color-mix(in oklab, var(--chart-N) 15%, transparent)", color: "var(--chart-N)" }}` so dark mode works.
+- Employee-detail `AreaChart`: replace hardcoded `#3b82f6` / `#10b981` / `#f59e0b` / `#8b5cf6` with `var(--chart-1..4)` (matching the summary chart) and reuse the same gradient defs pattern.
+- Fix `Tooltip` `contentStyle` that uses `hsl(var(--card))` → `var(--card)` (tokens are oklch, not hsl).
+
+In `src/routes/_authenticated/admin.$id.tsx` `AnalyticsPanel`:
+- Replace `bg-primary/30`, `bg-amber-500/70`, `bg-violet-500/70` swatches/bars with inline styles using `var(--chart-1..4)` at matching opacities.
+- Update the legend swatches likewise.
+
+Confirm `src/styles.css` defines `--chart-1..4` (it ships with the template). If missing, add 4 oklch values in `:root` + `.dark`.
+
+## 5. Verify backend records vCard / Wallet events
+
+Add a short note to `README.md` under "Features" (or to `INSTALL.md` in the analytics section) stating that the selfhost endpoints `/api/public/vcard/:slug`, `/api/public/wallet/:slug`, `/api/public/google-wallet/:slug` MUST insert a `vcard_download` / `wallet_download` event row before returning — otherwise the analytics columns stay at zero.
+
+This is documentation only; the actual code change lives in the (separate) `selfhost/` repo and can't be edited from here.
+
+## Out of scope
+
+- The SSR absolute-URL issue on `card.$slug.tsx` loader (#6 in review) — leave for a follow-up since it requires either marking the route client-only or adding a `getRequestOrigin` server fn, both of which are larger changes.
+- `__root.tsx` SEO polish (canonical, twitter:image mirror) — separate small task.
+- The missing `selfhost/` directory — informational, no code change.
+
+## Validation
+
+- `rg "supabase" src` returns nothing.
+- `rg "checkIsAdmin" src` shows only the (kept or removed) library + any intentional callers.
+- Build passes (harness runs it).
+- Visual check of `/admin/analytics` in light + dark mode: both charts and all 4 stat cards use chart token colors.
