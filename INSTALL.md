@@ -61,6 +61,9 @@ APP_ORIGIN=https://card.example.com
 UPLOAD_DIR=/var/lib/business-card/uploads
 PORT=3000
 
+# Required — signs JWT session cookies and salts IP hashes. Use a long random string.
+SESSION_SECRET=replace-with-a-long-random-string
+
 # Apple Wallet (optional)
 APPLE_PASS_TYPE_ID=pass.com.example.businesscard
 APPLE_TEAM_ID=XXXXXXXXXX
