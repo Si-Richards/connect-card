@@ -43,8 +43,10 @@ See [INSTALL.md](./INSTALL.md) for the full single-VPS install (MySQL + Node + s
 
 ## Re-enabling auth
 
-The admin section was intentionally left open during the cloud → self-host migration. To lock it down:
+Auth is enabled by default:
 
-1. Add an `/api/auth/login` endpoint in the Express bundle (bcrypt + JWT cookie).
-2. Wrap admin endpoints with a `requireAdmin` middleware.
-3. Restore an `_authenticated` route guard in `src/routes/_authenticated/route.tsx` that calls `/api/auth/me` and redirects on 401.
+- `selfhost/src/auth.ts` issues an httpOnly JWT cookie via `POST /api/auth/login` (bcrypt-hashed passwords).
+- `requireAdmin` guards `/api/employees`, `/api/settings`, `/api/uploads`, and `/api/analytics`.
+- The SPA's `_authenticated` route guard calls `/api/auth/me` and redirects to `/login` on 401.
+
+Bootstrap the first admin with `npm run create-admin` (see [INSTALL.md](./INSTALL.md#1b-bootstrap-the-first-admin-user)).
