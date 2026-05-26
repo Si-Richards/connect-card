@@ -1,0 +1,15 @@
+[Unit]
+Description=Business Card API
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/business-card/selfhost
+EnvironmentFile=/opt/business-card/selfhost/.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,59 +1,100 @@
-# Apply review fixes
+# Build the `selfhost/` Express + MySQL backend
 
-Frontend-only changes (plus one backend note for the user). No DB migrations.
+The frontend (`src/lib/api.ts`) and `INSTALL.md` already document a backend at `selfhost/` that doesn't exist in the repo. That's why `npm run create-admin` fails. I'll create it as a self-contained Node 20 + Express + MySQL bundle that matches the exact endpoints, cookie auth, and schema the rest of the project assumes.
 
-## 1. Delete dead Supabase integration
+## What I'll create
 
-- Delete `src/integrations/supabase/` (all 5 files: `auth-attacher.ts`, `auth-middleware.ts`, `client.server.ts`, `client.ts`, `types.ts`).
-- Remove `@supabase/supabase-js` from `package.json` dependencies.
-- Verify no remaining imports with `rg "integrations/supabase|@supabase/supabase-js" src`.
+```
+selfhost/
+  package.json               # scripts: dev, build, start, create-admin
+  tsconfig.json
+  .env.example
+  business-card.service      # systemd unit
+  src/
+    index.ts                 # Express bootstrap, CORS, cookies, static /uploads, error handler
+    db.ts                    # mysql2/promise pool from DATABASE_URL
+    env.ts                   # typed env loader (dotenv)
+    auth.ts                  # bcrypt + JWT (httpOnly cookie), requireAuth, requireAdmin
+    routes/
+      auth.ts                # POST /auth/login, /auth/logout, GET /auth/me
+      employees.ts           # CRUD on /employees (admin)
+      settings.ts            # GET/PATCH /settings (admin)
+      uploads.ts             # POST /uploads (multer → UPLOAD_DIR, returns {url})
+      analytics.ts           # GET /analytics/summary, /analytics/employees/:id
+      public.ts              # GET /public/cards/:slug, POST /public/events,
+                             # GET /public/vcard/:slug, /public/qr/:slug,
+                             # GET /public/wallet/:slug, /public/google-wallet/:slug
+    lib/
+      vcard.ts               # build RFC vCard 3.0 string from employee
+      qr.ts                  # PNG + SVG via `qrcode`
+      wallet-apple.ts        # .pkpass via `passkit-generator` (501 if env unset)
+      wallet-google.ts       # JWT save-link via google-auth-library (501 if env unset)
+      events.ts              # insertEvent helper used by public download routes
+    scripts/
+      create-admin.ts        # CLI: upsert user + ensure admin role (idempotent)
+```
 
-## 2. Remove the public errors dump endpoint
+## Endpoints (match `src/lib/api.ts` exactly)
 
-- Delete `src/routes/api/public/errors.ts` (publicly accessible internal error dump — security risk).
-- Delete the now-unused `src/lib/error-capture.ts` if nothing else imports it (check first).
+Auth (cookie-based, `credentials: "include"`):
+- `POST /api/auth/login` `{email,password}` → sets `session` httpOnly JWT cookie
+- `POST /api/auth/logout`
+- `GET /api/auth/me` → `{user:{id,email,isAdmin}}`
 
-## 3. Move auth gate into `beforeLoad`
+Admin (require admin role):
+- `GET/POST /api/employees`, `GET/PATCH/DELETE /api/employees/:id`
+- `GET/PATCH /api/settings`
+- `POST /api/uploads` (multipart, `kind` ∈ employee-photo|company-asset)
+- `GET /api/analytics/summary?days=N`
+- `GET /api/analytics/employees/:id?days=N`
 
-Rewrite `src/routes/_authenticated/route.tsx`:
-- Add `beforeLoad` that calls `api.me()` via the router's `queryClient` (`ensureQueryData`), throws `redirect({ to: "/login", search: { redirect: location.href } })` on 401/403 or non-admin.
-- Component reads the cached user via `useSuspenseQuery` (or `useQuery` with `initialData`) — no more `useEffect` redirects, no flash.
+Public:
+- `GET /api/public/cards/:slug` → `{employee, settings}`, 404 if missing/disabled
+- `POST /api/public/events` (`view` | `scan`, hashed IP)
+- `GET /api/public/vcard/:slug` → `text/vcard` + inserts `vcard_download` event
+- `GET /api/public/qr/:slug?format=png|svg`
+- `GET /api/public/wallet/:slug` → `.pkpass` (501 if Apple env unset) + `wallet_download` event
+- `GET /api/public/google-wallet/:slug` → JWT redirect (501 if Google env unset) + `wallet_download` event
 
-Wire `queryClient` into the router context (already present per `__root.tsx`'s `createRootRouteWithContext<{ queryClient: QueryClient }>`).
+This closes the README's analytics caveat — `vcard_download` / `wallet_download` are inserted server-side before the file is returned.
 
-Drop redundant `checkIsAdmin` calls:
-- `src/routes/_authenticated/admin.index.tsx`: remove `adminQ` + `adminFn`, run `employees`/`analytics` queries unconditionally (layout already gates).
-- `src/routes/_authenticated/admin.analytics.tsx`: same — remove `adminQ` and `enabled: enabled` gating.
-- `src/lib/employees.functions.ts`: keep `checkIsAdmin` export (used elsewhere) or remove if no callers remain after the refactor.
+## `create-admin` script (fixes the reported error)
 
-## 4. Unify chart + stat colors on design tokens
+```
+npm run create-admin -- admin@example.com 'a-strong-password'
+# or
+ADMIN_EMAIL=... ADMIN_PASSWORD=... npm run create-admin
+```
 
-In `src/routes/_authenticated/admin.analytics.tsx`:
-- `StatCard` `tone` prop: replace `bg-blue-100 text-blue-700` etc. with semantic tints driven by `--chart-1..4`. Use inline `style={{ background: "color-mix(in oklab, var(--chart-N) 15%, transparent)", color: "var(--chart-N)" }}` so dark mode works.
-- Employee-detail `AreaChart`: replace hardcoded `#3b82f6` / `#10b981` / `#f59e0b` / `#8b5cf6` with `var(--chart-1..4)` (matching the summary chart) and reuse the same gradient defs pattern.
-- Fix `Tooltip` `contentStyle` that uses `hsl(var(--card))` → `var(--card)` (tokens are oklch, not hsl).
+Behavior matches `INSTALL.md`:
+- creates `users` row, or resets `password_hash` if the email already exists
+- ensures `user_roles(user_id, 'admin')` (idempotent)
+- requires `DATABASE_URL` from `selfhost/.env`, password ≥ 8 chars
+- exits non-zero with a clear message on bad input
 
-In `src/routes/_authenticated/admin.$id.tsx` `AnalyticsPanel`:
-- Replace `bg-primary/30`, `bg-amber-500/70`, `bg-violet-500/70` swatches/bars with inline styles using `var(--chart-1..4)` at matching opacities.
-- Update the legend swatches likewise.
+## Dependencies (selfhost only — separate `package.json`)
 
-Confirm `src/styles.css` defines `--chart-1..4` (it ships with the template). If missing, add 4 oklch values in `:root` + `.dark`.
+`express`, `cookie-parser`, `mysql2`, `bcryptjs`, `jsonwebtoken`, `multer`, `zod`, `dotenv`, `qrcode`, `uuid`, `cors`, `passkit-generator`, `google-auth-library`. Dev: `typescript`, `tsx`, `@types/*`.
 
-## 5. Verify backend records vCard / Wallet events
+Note: these run on the user's Node 20 VPS, not the Lovable Worker — native deps are fine.
 
-Add a short note to `README.md` under "Features" (or to `INSTALL.md` in the analytics section) stating that the selfhost endpoints `/api/public/vcard/:slug`, `/api/public/wallet/:slug`, `/api/public/google-wallet/:slug` MUST insert a `vcard_download` / `wallet_download` event row before returning — otherwise the analytics columns stay at zero.
+## Security defaults
 
-This is documentation only; the actual code change lives in the (separate) `selfhost/` repo and can't be edited from here.
+- bcrypt cost 12, JWT signed with `SESSION_SECRET` (added to `.env.example`, required at boot)
+- Cookie: `httpOnly`, `sameSite=lax`, `secure` when `APP_ORIGIN` is https
+- Zod validation on every request body / query / params
+- `requireAdmin` middleware on every `/employees`, `/settings`, `/uploads`, `/analytics` route
+- IP hashed with `SESSION_SECRET` salt before insert into `card_events`
+- Multer: 5 MB limit, mime allowlist (`image/png|jpeg|webp|svg+xml`), random filename
+
+## Docs
+
+- Add `SESSION_SECRET` to `INSTALL.md` env block
+- Note that `selfhost/.env` must exist before `create-admin` runs
+- README "Re-enabling auth" section: mark as done, point at `selfhost/src/auth.ts`
 
 ## Out of scope
 
-- The SSR absolute-URL issue on `card.$slug.tsx` loader (#6 in review) — leave for a follow-up since it requires either marking the route client-only or adding a `getRequestOrigin` server fn, both of which are larger changes.
-- `__root.tsx` SEO polish (canonical, twitter:image mirror) — separate small task.
-- The missing `selfhost/` directory — informational, no code change.
-
-## Validation
-
-- `rg "supabase" src` returns nothing.
-- `rg "checkIsAdmin" src` shows only the (kept or removed) library + any intentional callers.
-- Build passes (harness runs it).
-- Visual check of `/admin/analytics` in light + dark mode: both charts and all 4 stat cards use chart token colors.
+- Frontend changes (api.ts already matches)
+- Apple/Google Wallet certificate provisioning (env-driven; endpoints return 501 until configured — matches existing INSTALL.md)
+- Tests, Docker, multi-tenant
