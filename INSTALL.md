@@ -84,14 +84,15 @@ sudo chown -R www-data:www-data /var/lib/business-card
 
 ## 3. Frontend (TanStack Start SPA)
 
-From the project root:
+From the project root (e.g. `/opt/connect-card`):
 
 ```bash
+cd /opt/connect-card
 bun install
 VITE_API_BASE_URL=/api bun run build
 ```
 
-The built static assets land in `dist/`. Serve them from the same origin as the API (recommended — keeps `/api` relative and avoids CORS) by pointing nginx/Caddy at `dist/` for `/` and proxying `/api`, `/uploads`, and `/card/*` to the Node backend.
+The build writes the static site to `dist/`. Confirm `dist/index.html` exists before configuring the reverse proxy — if it's missing, the build didn't run and every URL returns 404 from nginx. Serve `dist/` from the same origin as the API (keeps `/api` relative and avoids CORS); only `/api` and `/uploads` are proxied to Node — `/card/:slug` is a SPA route and must be served by `index.html`.
 
 ## 4. systemd
 
@@ -103,20 +104,27 @@ sudo systemctl enable --now business-card
 journalctl -u business-card -f
 ```
 
-## 5. Reverse proxy (Caddy example)
+## 5. Reverse proxy
+
+### nginx
+
+A ready-to-edit config is provided at `business-card.nginx.conf`. Update `server_name` and `root` (must point at your `dist/` directory) and drop it into `/etc/nginx/sites-available/`.
+
+### Caddy
 
 ```
 card.example.com {
-  root * /opt/business-card/dist
+  root * /opt/connect-card/dist
   encode gzip
 
   handle /api/* { reverse_proxy localhost:3000 }
   handle /uploads/* { reverse_proxy localhost:3000 }
-  handle /card/* { reverse_proxy localhost:3000 }
 
   handle { try_files {path} /index.html; file_server }
 }
 ```
+
+Do NOT proxy `/card/*` to the backend — it's a SPA route served by `index.html`.
 
 ## 6. Auth (currently disabled)
 
@@ -124,6 +132,8 @@ The admin section is open in this build. Before going to production, add JWT aut
 
 ## Troubleshooting
 
-- **`/api/*` returns HTML** — your reverse proxy isn't forwarding `/api`. Check the `handle` block above.
+- **404 on `/` and `/card/...` but API works** — nginx `root` doesn't match where you built. Run `ls /opt/connect-card/dist/index.html`; if missing, re-run `VITE_API_BASE_URL=/api bun run build`. If present, fix the `root` directive and `nginx -t && systemctl reload nginx`.
+- **`/card/:slug` returns 404 but `/` works** — you're proxying `/card/*` to Express. Remove that handler; `/card/*` is a SPA route.
+- **`/api/*` returns HTML** — your reverse proxy isn't forwarding `/api`. Check the `location /api/` (nginx) or `handle /api/*` (Caddy) block.
 - **Uploads 404 after restart** — `UPLOAD_DIR` must be persistent and writable by the Node user.
 - **Wallet endpoints 501** — the corresponding `APPLE_*` or `GOOGLE_*` env vars are unset. Wallet support is opt-in.

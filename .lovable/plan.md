@@ -1,100 +1,44 @@
-# Build the `selfhost/` Express + MySQL backend
+# Fix the "service running but no frontend" 404
 
-The frontend (`src/lib/api.ts`) and `INSTALL.md` already document a backend at `selfhost/` that doesn't exist in the repo. That's why `npm run create-admin` fails. I'll create it as a self-contained Node 20 + Express + MySQL bundle that matches the exact endpoints, cookie auth, and schema the rest of the project assumes.
+## Diagnosis
 
-## What I'll create
+Two issues in `/mnt/documents/business-card.nginx.conf`:
 
-```
-selfhost/
-  package.json               # scripts: dev, build, start, create-admin
-  tsconfig.json
-  .env.example
-  business-card.service      # systemd unit
-  src/
-    index.ts                 # Express bootstrap, CORS, cookies, static /uploads, error handler
-    db.ts                    # mysql2/promise pool from DATABASE_URL
-    env.ts                   # typed env loader (dotenv)
-    auth.ts                  # bcrypt + JWT (httpOnly cookie), requireAuth, requireAdmin
-    routes/
-      auth.ts                # POST /auth/login, /auth/logout, GET /auth/me
-      employees.ts           # CRUD on /employees (admin)
-      settings.ts            # GET/PATCH /settings (admin)
-      uploads.ts             # POST /uploads (multer → UPLOAD_DIR, returns {url})
-      analytics.ts           # GET /analytics/summary, /analytics/employees/:id
-      public.ts              # GET /public/cards/:slug, POST /public/events,
-                             # GET /public/vcard/:slug, /public/qr/:slug,
-                             # GET /public/wallet/:slug, /public/google-wallet/:slug
-    lib/
-      vcard.ts               # build RFC vCard 3.0 string from employee
-      qr.ts                  # PNG + SVG via `qrcode`
-      wallet-apple.ts        # .pkpass via `passkit-generator` (501 if env unset)
-      wallet-google.ts       # JWT save-link via google-auth-library (501 if env unset)
-      events.ts              # insertEvent helper used by public download routes
-    scripts/
-      create-admin.ts        # CLI: upsert user + ensure admin role (idempotent)
-```
+1. **Wrong document root.** Config uses `/opt/business-card/dist`, but your install is at `/opt/connect-card`. If `dist/index.html` isn't at the configured path, every request returns 404.
+2. **`/card/*` is wrongly proxied to Express.** The public card page is a SPA route (`src/routes/card.$slug.tsx`) — it must be served by `index.html`, not forwarded to Node. The Express backend only owns `/api/*` and `/uploads/*`.
 
-## Endpoints (match `src/lib/api.ts` exactly)
+There's also a prerequisite to confirm: the SPA build (`VITE_API_BASE_URL=/api bun run build`) must have actually produced `dist/index.html`.
 
-Auth (cookie-based, `credentials: "include"`):
-- `POST /api/auth/login` `{email,password}` → sets `session` httpOnly JWT cookie
-- `POST /api/auth/logout`
-- `GET /api/auth/me` → `{user:{id,email,isAdmin}}`
+## Changes
 
-Admin (require admin role):
-- `GET/POST /api/employees`, `GET/PATCH/DELETE /api/employees/:id`
-- `GET/PATCH /api/settings`
-- `POST /api/uploads` (multipart, `kind` ∈ employee-photo|company-asset)
-- `GET /api/analytics/summary?days=N`
-- `GET /api/analytics/employees/:id?days=N`
+### 1. Update `/mnt/documents/business-card.nginx.conf`
 
-Public:
-- `GET /api/public/cards/:slug` → `{employee, settings}`, 404 if missing/disabled
-- `POST /api/public/events` (`view` | `scan`, hashed IP)
-- `GET /api/public/vcard/:slug` → `text/vcard` + inserts `vcard_download` event
-- `GET /api/public/qr/:slug?format=png|svg`
-- `GET /api/public/wallet/:slug` → `.pkpass` (501 if Apple env unset) + `wallet_download` event
-- `GET /api/public/google-wallet/:slug` → JWT redirect (501 if Google env unset) + `wallet_download` event
+- Change `root` to match the real install path (default to `/opt/connect-card/dist`, callout to edit if different).
+- **Remove** the `location /card/ { ... }` block entirely so card URLs hit the SPA fallback.
+- Keep `/api/` and `/uploads/` proxies to `127.0.0.1:3000`.
+- Keep `try_files $uri $uri/ /index.html;` for SPA fallback.
 
-This closes the README's analytics caveat — `vcard_download` / `wallet_download` are inserted server-side before the file is returned.
+### 2. Update `INSTALL.md`
 
-## `create-admin` script (fixes the reported error)
+- Make the build step explicit and unambiguous:
+  ```
+  cd /opt/connect-card
+  bun install
+  VITE_API_BASE_URL=/api bun run build
+  ```
+- Note that the nginx `root` must point at the resulting `dist/` directory.
+- Update the Caddy example to also drop the `/card/*` handler (same bug).
+
+## Verification steps for the user
+
+After editing nginx and reloading:
 
 ```
-npm run create-admin -- admin@example.com 'a-strong-password'
-# or
-ADMIN_EMAIL=... ADMIN_PASSWORD=... npm run create-admin
+ls /opt/connect-card/dist/index.html        # must exist
+sudo nginx -t && sudo systemctl reload nginx
+curl -I https://card.example.com/           # 200, text/html
+curl -I https://card.example.com/card/test  # 200, text/html (SPA, not 404)
+curl     https://card.example.com/api/public/healthcheck   # {"ok":true}
 ```
 
-Behavior matches `INSTALL.md`:
-- creates `users` row, or resets `password_hash` if the email already exists
-- ensures `user_roles(user_id, 'admin')` (idempotent)
-- requires `DATABASE_URL` from `selfhost/.env`, password ≥ 8 chars
-- exits non-zero with a clear message on bad input
-
-## Dependencies (selfhost only — separate `package.json`)
-
-`express`, `cookie-parser`, `mysql2`, `bcryptjs`, `jsonwebtoken`, `multer`, `zod`, `dotenv`, `qrcode`, `uuid`, `cors`, `passkit-generator`, `google-auth-library`. Dev: `typescript`, `tsx`, `@types/*`.
-
-Note: these run on the user's Node 20 VPS, not the Lovable Worker — native deps are fine.
-
-## Security defaults
-
-- bcrypt cost 12, JWT signed with `SESSION_SECRET` (added to `.env.example`, required at boot)
-- Cookie: `httpOnly`, `sameSite=lax`, `secure` when `APP_ORIGIN` is https
-- Zod validation on every request body / query / params
-- `requireAdmin` middleware on every `/employees`, `/settings`, `/uploads`, `/analytics` route
-- IP hashed with `SESSION_SECRET` salt before insert into `card_events`
-- Multer: 5 MB limit, mime allowlist (`image/png|jpeg|webp|svg+xml`), random filename
-
-## Docs
-
-- Add `SESSION_SECRET` to `INSTALL.md` env block
-- Note that `selfhost/.env` must exist before `create-admin` runs
-- README "Re-enabling auth" section: mark as done, point at `selfhost/src/auth.ts`
-
-## Out of scope
-
-- Frontend changes (api.ts already matches)
-- Apple/Google Wallet certificate provisioning (env-driven; endpoints return 501 until configured — matches existing INSTALL.md)
-- Tests, Docker, multi-tenant
+If `dist/index.html` is missing, the build didn't run — re-run the build command above before touching nginx again.
