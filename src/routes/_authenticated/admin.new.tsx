@@ -157,8 +157,8 @@ export function EmployeeForm({ mode }: { mode: Mode }) {
           <Field label="Email" type="email" value={form.email} onChange={(v) => update("email", v)} />
           <Field label="Office phone" value={form.office_phone} onChange={(v) => update("office_phone", v)} />
           <Field label="Mobile" value={form.mobile} onChange={(v) => update("mobile", v)} />
-          <Field label="Website" type="url" placeholder="https://" value={form.website} onChange={(v) => update("website", v)} />
-          <Field label="LinkedIn URL" type="url" placeholder="https://" value={form.linkedin} onChange={(v) => update("linkedin", v)} />
+          <Field label="Website" placeholder="www.example.com" value={form.website} onChange={(v) => update("website", v)} />
+          <Field label="LinkedIn URL" placeholder="linkedin.com/in/name" value={form.linkedin} onChange={(v) => update("linkedin", v)} />
         </div>
         <div>
           <label className="text-sm font-medium">Notes (shown in vCard)</label>
