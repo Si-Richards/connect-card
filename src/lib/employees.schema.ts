@@ -11,7 +11,17 @@ export const employeeInputSchema = z.object({
   website: z.string().trim().url().max(255).optional().or(z.literal("")),
   linkedin: z.string().trim().url().max(255).optional().or(z.literal("")),
   notes: z.string().trim().max(1000).optional().or(z.literal("")),
-  photo_url: z.string().trim().url().max(500).optional().or(z.literal("")).nullable(),
+  photo_url: z
+    .string()
+    .trim()
+    .max(500)
+    .refine(
+      (v) => v === "" || v.startsWith("/uploads/") || /^https?:\/\//.test(v),
+      "Must be an uploaded file or a full URL",
+    )
+    .optional()
+    .or(z.literal(""))
+    .nullable(),
   disabled: z.boolean().optional().default(false),
 });
 
