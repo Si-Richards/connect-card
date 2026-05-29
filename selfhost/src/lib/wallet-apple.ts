@@ -1,5 +1,8 @@
 import forge from "node-forge";
 import { Buffer } from "node:buffer";
+import fs from "node:fs/promises";
+import path from "node:path";
+import sharp from "sharp";
 import { env, appleWalletConfigured } from "../env.js";
 import type { Employee } from "../routes/types.js";
 
@@ -125,16 +128,34 @@ function onePixelPng(): Buffer {
   );
 }
 
+async function employeePhotoPng(e: Employee, size: number): Promise<Buffer | null> {
+  if (!e.photo_url) return null;
+  try {
+    const url = new URL(e.photo_url, env.APP_ORIGIN);
+    if (url.pathname.startsWith("/uploads/")) {
+      const file = path.join(env.UPLOAD_DIR, path.basename(url.pathname));
+      return await sharp(await fs.readFile(file)).resize(size, size, { fit: "cover" }).png().toBuffer();
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 export async function buildApplePass(e: Employee, cardUrl: string): Promise<Buffer> {
   if (!appleWalletConfigured) throw new Error("Apple Wallet not configured");
 
   const certificates = loadPemMaterial();
   const { PKPass } = await import("passkit-generator");
+  const photo = await employeePhotoPng(e, 180);
+  const photo2x = await employeePhotoPng(e, 360);
   const pass = new PKPass(
     {
       "pass.json": createPassJson(e, cardUrl),
       "icon.png": onePixelPng(),
       "icon@2x.png": onePixelPng(),
+      ...(photo ? { "thumbnail.png": photo } : {}),
+      ...(photo2x ? { "thumbnail@2x.png": photo2x } : {}),
     },
     certificates,
   );
