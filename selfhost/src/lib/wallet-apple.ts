@@ -86,6 +86,9 @@ function createPassJson(e: Employee, cardUrl: string): Buffer {
       organizationName: e.company ?? "Business Card",
       description: `${e.full_name} – Business Card`,
       serialNumber: e.id,
+      backgroundColor: "rgb(255, 102, 0)",
+      foregroundColor: "rgb(255, 255, 255)",
+      labelColor: "rgb(255, 255, 255)",
       generic: {
         headerFields: e.company
           ? [{ key: "company", label: "Company", value: e.company }]
