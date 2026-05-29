@@ -25,7 +25,7 @@ export function EmployeeForm({ mode }: { mode: Mode }) {
   const [form, setForm] = useState<any>({
     slug: "", full_name: "", job_title: "", company: "", email: "",
     office_phone: "", mobile: "", website: "", linkedin: "", notes: "",
-    photo_url: "", disabled: false,
+    photo_url: "", address: "", disabled: false,
   });
   const [slugTouched, setSlugTouched] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -159,6 +159,16 @@ export function EmployeeForm({ mode }: { mode: Mode }) {
           <Field label="Mobile" value={form.mobile} onChange={(v) => update("mobile", v)} />
           <Field label="Website" placeholder="www.example.com" value={form.website} onChange={(v) => update("website", v)} />
           <Field label="LinkedIn URL" placeholder="linkedin.com/in/name" value={form.linkedin} onChange={(v) => update("linkedin", v)} />
+        </div>
+        <div>
+          <label className="text-sm font-medium">Address</label>
+          <textarea
+            value={form.address ?? ""}
+            onChange={(e) => update("address", e.target.value)}
+            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            rows={2}
+            placeholder="123 High Street, London, EC1A 1AA"
+          />
         </div>
         <div>
           <label className="text-sm font-medium">Notes (shown in vCard)</label>

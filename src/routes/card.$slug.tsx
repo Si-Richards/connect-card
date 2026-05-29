@@ -1,6 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { z } from "zod";
-import { Mail, Phone, Smartphone, Globe, Linkedin, Download, Wallet, Link2, Check, Share2 } from "lucide-react";
+import { Mail, Phone, Smartphone, Globe, Linkedin, Download, Wallet, Link2, Check, Share2, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 import { recordEmployeeEvent } from "@/lib/analytics.functions";
 import { api } from "@/lib/api";
@@ -203,6 +203,14 @@ function CardPage() {
               )}
               {e.linkedin && (
                 <ContactRow href={e.linkedin} icon={<Linkedin className="w-4 h-4" />} label="LinkedIn" value="View profile" />
+              )}
+              {e.address && (
+                <ContactRow
+                  href={`https://maps.google.com/?q=${encodeURIComponent(e.address)}`}
+                  icon={<MapPin className="w-4 h-4" />}
+                  label="Address"
+                  value={e.address}
+                />
               )}
             </div>
 
