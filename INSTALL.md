@@ -114,7 +114,7 @@ A ready-to-edit config is provided at `business-card.nginx.conf`. Update `server
 
 ```
 card.example.com {
-  root * /opt/connect-card/dist
+  root * /opt/connect-card/dist/client
   encode gzip
 
   handle /api/* { reverse_proxy localhost:3000 }
