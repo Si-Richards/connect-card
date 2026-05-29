@@ -5,6 +5,12 @@ export { appleWalletConfigured };
 
 export async function buildApplePass(e: Employee, cardUrl: string): Promise<Buffer> {
   if (!appleWalletConfigured) throw new Error("Apple Wallet not configured");
+  if (!env.APPLE_PASS_P12_PASSWORD) {
+    throw new Error(
+      "APPLE_PASS_P12_PASSWORD is empty. passkit-generator requires a non-empty passphrase on the .p12. " +
+      "Re-export your Pass Type ID certificate from Keychain with a password set, then update .env.",
+    );
+  }
   // Lazy import so missing native deps don't crash boot when Wallet is unused.
   const { PKPass } = await import("passkit-generator");
 

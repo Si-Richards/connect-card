@@ -1,100 +1,70 @@
-## Goal
+## Problem
 
-Make `bun run build` produce a normal SPA (`dist/index.html` + `dist/assets/...`) so the existing nginx config (`root /opt/connect-card/dist;`) just works. The Express API in `selfhost/` stays unchanged.
+Two separate bugs:
 
-## Why this is feasible (small blast radius)
+1. **The server crashes** (not just the request fails) when someone clicks "Add to Apple Wallet". `buildApplePass()` throws synchronously inside `new PKPass(...)`, but the `/wallet/:slug` handler has no `try/catch`, so the rejection escapes Express and systemd restarts the process. That's why each click takes the API down.
 
-The runtime code is already SPA-shaped:
+2. **The actual passkit error**: `"signerKeyPassphrase" is not allowed to be empty`. Your `.env` has `APPLE_PASS_P12_PASSWORD=` (empty). `passkit-generator` requires a non-empty passphrase whenever you hand it a PKCS#12 (which we do — `APPLE_PASS_P12_BASE64` is used for both `signerCert` and `signerKey`). An empty string is rejected by its Joi schema.
 
-- `src/lib/employees.functions.ts` and `src/lib/analytics.functions.ts` are already thin client wrappers around `src/lib/api.ts` (fetch → Express). No real server functions.
-- `src/router.tsx` already uses plain `@tanstack/react-router` (no Start APIs).
-- Only Start-specific pieces are: `shellComponent` in `__root.tsx`, `src/start.ts`, `src/server.ts`, `wrangler.jsonc`, one server route (`src/routes/api/public/healthcheck.ts`), and the Vite config target.
+## Fix
 
-## Changes
-
-### 1. Build config — `vite.config.ts`
-
-Replace `@lovable.dev/vite-tanstack-config` (which forces TanStack Start + Cloudflare Worker output) with a plain SPA config:
+**A. `selfhost/src/routes/public.ts`** — wrap the wallet route in try/catch so a build error returns `500 <message>` to the browser instead of killing the Node process:
 
 ```ts
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
-import tsconfigPaths from "vite-tsconfig-paths";
-import { tanstackRouter } from "@tanstack/router-plugin/vite";
-
-export default defineConfig({
-  plugins: [
-    tanstackRouter({ target: "react", autoCodeSplitting: true }),
-    react(),
-    tailwindcss(),
-    tsconfigPaths(),
-  ],
-  build: { outDir: "dist" },
-  server: { host: "::", port: 8080 },
+publicRouter.get("/wallet/:slug", async (req, res) => {
+  if (!appleWalletConfigured) return res.status(501).send("Apple Wallet not configured");
+  const emp = await loadActive(req.params.slug);
+  if (!emp) return res.status(404).send("Not found");
+  try {
+    const buf = await buildApplePass(emp, cardUrl(emp.slug));
+    await insertEvent(emp.id, "wallet_download", req);
+    res.setHeader("Content-Type", "application/vnd.apple.pkpass");
+    res.setHeader("Content-Disposition", `attachment; filename="${emp.slug}.pkpass"`);
+    res.send(buf);
+  } catch (err: any) {
+    console.error("[apple-wallet] build failed:", err?.message ?? err);
+    res.status(500).send(`Apple Wallet pass generation failed: ${err?.message ?? "unknown error"}`);
+  }
 });
 ```
 
-`@tanstack/router-plugin` and `@vitejs/plugin-react` are already in `package.json`. No new deps needed.
+Same defensive wrapper added to `/google-wallet/:slug`.
 
-### 2. SPA entrypoints
+**B. `selfhost/src/lib/wallet-apple.ts`** — pre-flight check: if `APPLE_PASS_P12_PASSWORD` is empty, throw a clear error before calling `new PKPass(...)`:
 
-- Add **`index.html`** at repo root with `<div id="root"></div>` and `<script type="module" src="/src/main.tsx"></script>`. Include the existing `<meta>` tags from `__root.tsx`'s `head()` as a fallback (per-route `head()` won't run on the server anymore, so client-rendered meta is best-effort).
-- Add **`src/main.tsx`**: bootstraps the router and mounts into `#root`:
-  ```ts
-  import { StrictMode } from "react";
-  import { createRoot } from "react-dom/client";
-  import { RouterProvider } from "@tanstack/react-router";
-  import { getRouter } from "./router";
-  import "./styles.css";
-  createRoot(document.getElementById("root")!).render(
-    <StrictMode><RouterProvider router={getRouter()} /></StrictMode>
+```ts
+if (!env.APPLE_PASS_P12_PASSWORD) {
+  throw new Error(
+    "APPLE_PASS_P12_PASSWORD is empty. passkit-generator requires a non-empty passphrase on the .p12. " +
+    "Re-export your Pass Type ID certificate from Keychain with a password set, then update .env.",
   );
+}
+```
+
+**C. `selfhost/src/env.ts`** — tighten `appleWalletConfigured` to also require `APPLE_PASS_P12_PASSWORD`, so the frontend button is hidden when the passphrase is missing instead of showing a button that 500s.
+
+**D. `selfhost/.env.example` + `INSTALL.md`** — note that `APPLE_PASS_P12_PASSWORD` is **required**, not optional, and explain how to re-export the `.p12` from Keychain with a passphrase (Keychain → right-click the Pass Type ID cert → Export → set a password).
+
+## What you need to do on the VPS
+
+The certificate you currently exported has no passphrase. Apple's tooling and `passkit-generator` both require one. Two options:
+
+- **Easiest**: open Keychain Access on the Mac that owns the Pass Type ID cert, right-click the cert (with its private key), Export as `.p12`, **set a password** in the export dialog, then on the VPS:
+  ```bash
+  base64 -w0 pass.p12 > pass.p12.b64
+  ```
+  Paste that into `APPLE_PASS_P12_BASE64` and put the password you chose into `APPLE_PASS_P12_PASSWORD`, then `systemctl restart business-card`.
+
+- Or re-sign the existing key with a password:
+  ```bash
+  openssl pkcs12 -in pass.p12 -nodes -out tmp.pem -legacy
+  openssl pkcs12 -export -in tmp.pem -out pass-pw.p12 -password pass:YOUR_PASSWORD
+  rm tmp.pem
   ```
 
-### 3. Root route — `src/routes/__root.tsx`
+After the code change + new `.p12`, the wallet endpoint will either succeed or return a readable `500` — it will no longer crash the service.
 
-- Remove `shellComponent`, `RootShell`, `HeadContent`, `Scripts` imports.
-- Keep `component: RootComponent` (QueryClientProvider + `<Outlet/>`) and the not-found / error boundaries.
-- Drop the `head()` block (or keep but it becomes a no-op in SPA mode — moved to `index.html` instead).
+## Out of scope (not changed)
 
-### 4. Delete SSR / Worker plumbing
-
-Remove these files (all SSR-only):
-- `src/server.ts` — Worker entry wrapper
-- `src/start.ts` — `createStart` middleware
-- `wrangler.jsonc` — Cloudflare config
-- `src/routes/api/public/healthcheck.ts` — server route (Express has its own health endpoint)
-- `src/lib/error-capture.ts`, `src/lib/error-page.ts` — only used by the Worker entry (verify no other callers; the client `ErrorComponent` in `__root.tsx` doesn't use them)
-
-The Supabase helper files (`auth-attacher.ts`, `auth-middleware.ts`, `client.server.ts`) are unused by any route — leave them in place (they're auto-generated and the prompt forbids editing them), they'll be tree-shaken out.
-
-### 5. `package.json`
-
-Remove deps that are no longer used: `@tanstack/react-start`, `@cloudflare/vite-plugin`, `@lovable.dev/vite-tanstack-config`. (Keep `@tanstack/react-router`, `@tanstack/router-plugin`, `@vitejs/plugin-react`, `@tailwindcss/vite`, `vite-tsconfig-paths`.)
-
-Scripts stay as-is (`vite dev`, `vite build`, `vite preview`).
-
-### 6. nginx + INSTALL.md
-
-Revert to the original simple SPA layout:
-
-- `selfhost/business-card.nginx.conf`: `root /opt/connect-card/dist;` (back to plain `dist/`, the parent split disappears).
-- `INSTALL.md`: drop the `dist/client` / `dist/server` explanation; verification step becomes `ls /opt/connect-card/dist/index.html`; Caddy snippet reverts to `root * /opt/connect-card/dist`.
-- Build command on the server becomes simply: `VITE_API_BASE_URL=/api bun install && bun run build`.
-
-### 7. `.lovable/plan.md`
-
-Update to record the SPA switch (no more SSR, no more Cloudflare target).
-
-## Verification
-
-1. `bun run build` produces `dist/index.html` + `dist/assets/*.js|css`.
-2. `bun run preview` serves the SPA locally; `/`, `/login`, `/admin`, `/card/test-slug` all render (with API calls failing gracefully when the Express backend isn't running — that's expected in local preview).
-3. On the VPS: `ls /opt/connect-card/dist/index.html` exists, `nginx -t && systemctl reload nginx`, and `https://card.example.com/` loads the SPA shell, with `/api/*` still going to Express on :3000.
-
-## Heads-up / trade-offs
-
-- **Goodbye SSR meta tags.** Per-route `head()` no longer renders on the server. Crawlers and social previews will only see the static tags in `index.html`. If you ever want rich per-card OG images for `/card/:slug`, you'd need either (a) a tiny pre-render step, or (b) have Express render an HTML shell with injected meta for that route. Out of scope here.
-- **Deviation from the Lovable template.** This stack normally targets TanStack Start + Cloudflare Workers. Future Lovable template updates (e.g. `@lovable.dev/vite-tanstack-config` bumps) won't apply cleanly. That's a deliberate cost of self-hosting on plain nginx.
-- **`build:dev`** keeps working because it's still just `vite build --mode development`.
+- Splitting cert/key into separate PEMs — works today as long as the `.p12` has a password, so I'm leaving the current shape.
+- Pass icons (`icon.png` etc.) — `passkit-generator` will warn but still build; if iOS rejects the pass after this fix, that's the next change to make.
