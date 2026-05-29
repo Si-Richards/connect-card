@@ -92,7 +92,7 @@ bun install
 VITE_API_BASE_URL=/api bun run build
 ```
 
-The build writes the static site to `dist/`. Confirm `dist/index.html` exists before configuring the reverse proxy — if it's missing, the build didn't run and every URL returns 404 from nginx. Serve `dist/` from the same origin as the API (keeps `/api` relative and avoids CORS); only `/api` and `/uploads` are proxied to Node — `/card/:slug` is a SPA route and must be served by `index.html`.
+The build writes the static site to `dist/client/` and the SSR bundle to `dist/server/`. Nginx must serve `dist/client/` (it contains `index.html`); `dist/server/` is the Worker/SSR code and is not for nginx. Confirm `dist/client/index.html` exists before configuring the reverse proxy — if it's missing, the build didn't run and every URL returns 404 from nginx. Serve `dist/client/` from the same origin as the API (keeps `/api` relative and avoids CORS); only `/api` and `/uploads` are proxied to Node — `/card/:slug` is a SPA route and must be served by `index.html`.
 
 ## 4. systemd
 
