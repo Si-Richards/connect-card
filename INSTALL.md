@@ -65,6 +65,9 @@ PORT=3000
 SESSION_SECRET=replace-with-a-long-random-string
 
 # Apple Wallet (optional)
+# NOTE: APPLE_PASS_P12_PASSWORD is REQUIRED when enabling Apple Wallet.
+# passkit-generator rejects an empty passphrase — re-export the .p12 from Keychain
+# with a password set (Keychain → right-click cert → Export → set password).
 APPLE_PASS_TYPE_ID=pass.com.example.businesscard
 APPLE_TEAM_ID=XXXXXXXXXX
 APPLE_PASS_P12_BASE64=...
