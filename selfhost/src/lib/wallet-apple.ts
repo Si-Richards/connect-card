@@ -78,15 +78,6 @@ function loadPemMaterial(): PemMaterial {
 }
 
 function createPassJson(e: Employee, cardUrl: string): Buffer {
-  const secondaryFields = [
-    ...(e.job_title ? [{ key: "title", label: "Title", value: e.job_title }] : []),
-    ...(e.company ? [{ key: "company", label: "Company", value: e.company }] : []),
-  ];
-  const auxiliaryFields = [
-    ...(e.email ? [{ key: "email", label: "Email", value: e.email }] : []),
-    ...(e.mobile ? [{ key: "mobile", label: "Mobile", value: e.mobile }] : []),
-  ];
-
   return Buffer.from(
     JSON.stringify({
       formatVersion: 1,
@@ -96,9 +87,22 @@ function createPassJson(e: Employee, cardUrl: string): Buffer {
       description: `${e.full_name} – Business Card`,
       serialNumber: e.id,
       generic: {
+        headerFields: e.company
+          ? [{ key: "company", label: "Company", value: e.company }]
+          : [],
         primaryFields: [{ key: "name", label: "Name", value: e.full_name }],
-        secondaryFields,
-        auxiliaryFields,
+        secondaryFields: e.email
+          ? [{ key: "email", label: "Email", value: e.email }]
+          : [],
+        auxiliaryFields: e.mobile
+          ? [{ key: "mobile", label: "Mobile", value: e.mobile }]
+          : [],
+        backFields: [
+          ...(e.job_title ? [{ key: "title", label: "Title", value: e.job_title }] : []),
+          ...(e.office_phone ? [{ key: "office", label: "Office", value: e.office_phone }] : []),
+          ...(e.website ? [{ key: "website", label: "Website", value: e.website }] : []),
+          ...(e.linkedin ? [{ key: "linkedin", label: "LinkedIn", value: e.linkedin }] : []),
+        ],
       },
       barcodes: [
         {
