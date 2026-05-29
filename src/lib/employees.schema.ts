@@ -42,6 +42,7 @@ export const employeeInputSchema = z.object({
   linkedin: optionalUrl("LinkedIn URL"),
   notes: z.string().trim().max(1000).optional().or(z.literal("")),
   photo_url: optionalUrl("Photo URL"),
+  address: z.string().trim().max(500).optional().or(z.literal("")).nullable(),
   disabled: z.boolean().optional().default(false),
 });
 

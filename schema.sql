@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS employees (
   linkedin        VARCHAR(512) NULL,
   notes           TEXT         NULL,
   photo_url       VARCHAR(512) NULL,
+  address         VARCHAR(500) NULL,
   disabled        TINYINT(1)   NOT NULL DEFAULT 0,
   view_count      INT          NOT NULL DEFAULT 0,
   created_by      CHAR(36)     NULL,

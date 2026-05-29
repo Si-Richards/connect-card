@@ -25,11 +25,12 @@ const EmployeeSchema = z.object({
   linkedin: z.string().trim().max(512).nullable().optional(),
   notes: z.string().max(5000).nullable().optional(),
   photo_url: z.string().max(512).nullable().optional(),
+  address: z.string().trim().max(500).nullable().optional(),
   disabled: z.boolean().optional(),
 });
 
 const FIELDS = `id, slug, full_name, job_title, company, email, office_phone, mobile,
-  website, linkedin, notes, photo_url, disabled, view_count, created_at, updated_at`;
+  website, linkedin, notes, photo_url, address, disabled, view_count, created_at, updated_at`;
 
 function normalize(e: Employee): Employee {
   return { ...e, disabled: !!e.disabled };
@@ -59,8 +60,8 @@ employeesRouter.post("/", async (req, res) => {
     await exec(
       `INSERT INTO employees
        (id, slug, full_name, job_title, company, email, office_phone, mobile,
-        website, linkedin, notes, photo_url, disabled, created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        website, linkedin, notes, photo_url, address, disabled, created_by)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         id,
         v.slug,
@@ -74,6 +75,7 @@ employeesRouter.post("/", async (req, res) => {
         v.linkedin ?? null,
         v.notes ?? null,
         v.photo_url ?? null,
+        v.address ?? null,
         v.disabled ? 1 : 0,
         req.user!.sub,
       ],
