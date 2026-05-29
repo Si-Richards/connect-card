@@ -4,6 +4,17 @@ import type { Employee } from "../routes/types.js";
 
 export { googleWalletConfigured };
 
+function publicImageUrl(url: string | null): string | undefined {
+  if (!url) return undefined;
+  try {
+    const parsed = new URL(url, env.APP_ORIGIN);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
+    return parsed.toString();
+  } catch {
+    return undefined;
+  }
+}
+
 export function buildGoogleWalletSaveUrl(e: Employee, cardUrl: string): string {
   if (!googleWalletConfigured) throw new Error("Google Wallet not configured");
   const sa = JSON.parse(
@@ -11,6 +22,7 @@ export function buildGoogleWalletSaveUrl(e: Employee, cardUrl: string): string {
   ) as { client_email: string; private_key: string };
 
   const objectId = `${env.GOOGLE_WALLET_ISSUER_ID}.${e.id.replace(/-/g, "")}`;
+  const photoUrl = publicImageUrl(e.photo_url);
   const genericObject = {
     id: objectId,
     classId: env.GOOGLE_WALLET_CLASS_ID,
@@ -18,6 +30,9 @@ export function buildGoogleWalletSaveUrl(e: Employee, cardUrl: string): string {
     header: { defaultValue: { language: "en", value: e.full_name } },
     subheader: e.job_title
       ? { defaultValue: { language: "en", value: e.job_title } }
+      : undefined,
+    imageModulesData: photoUrl
+      ? [{ mainImage: { sourceUri: { uri: photoUrl }, contentDescription: { defaultValue: { language: "en", value: `${e.full_name} photo` } } } }]
       : undefined,
     barcode: { type: "QR_CODE", value: cardUrl },
     hexBackgroundColor: "#ff6600",

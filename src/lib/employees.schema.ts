@@ -1,14 +1,19 @@
 import { z } from "zod";
 
-// Accept empty string, /uploads/... path, or absolute http(s) URL.
+// Accept empty string, /uploads/... path, absolute http(s) URL, or a domain
+// that will be normalized at save time.
 const optionalUrl = (field: string) =>
   z
     .string()
     .trim()
     .max(512)
     .refine(
-      (v) => v === "" || v.startsWith("/uploads/") || /^https?:\/\/\S+$/i.test(v),
-      `${field} must be a full URL starting with http(s)://`,
+      (v) =>
+        v === "" ||
+        v.startsWith("/uploads/") ||
+        /^https?:\/\/\S+$/i.test(v) ||
+        /^[\w.-]+\.[a-z]{2,}(?:\/\S*)?$/i.test(v),
+      `${field} must be a valid URL`,
     )
     .optional()
     .or(z.literal(""))

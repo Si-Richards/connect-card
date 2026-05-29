@@ -87,7 +87,9 @@ export class ApiError extends Error {
 // relative paths like `/uploads/<file>`, which the SPA stores as-is
 // and renders via the same origin (nginx serves `/uploads/*`).
 function normalizeUploadedUrl(url: string) {
-  return (url ?? "").trim();
+  const trimmed = (url ?? "").trim();
+  if (trimmed.startsWith("uploads/")) return `/${trimmed}`;
+  return trimmed;
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
