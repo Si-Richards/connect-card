@@ -14,7 +14,6 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CardSlugRouteImport } from './routes/card.$slug'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
-import { Route as ApiPublicHealthcheckRouteImport } from './routes/api/public/healthcheck'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminNewRouteImport } from './routes/_authenticated/admin.new'
 import { Route as AuthenticatedAdminAnalyticsRouteImport } from './routes/_authenticated/admin.analytics'
@@ -43,11 +42,6 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
   getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const ApiPublicHealthcheckRoute = ApiPublicHealthcheckRouteImport.update({
-  id: '/api/public/healthcheck',
-  path: '/api/public/healthcheck',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminSettingsRoute =
   AuthenticatedAdminSettingsRouteImport.update({
@@ -80,7 +74,6 @@ export interface FileRoutesByFullPath {
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/new': typeof AuthenticatedAdminNewRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
-  '/api/public/healthcheck': typeof ApiPublicHealthcheckRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesByTo {
@@ -91,7 +84,6 @@ export interface FileRoutesByTo {
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/admin/new': typeof AuthenticatedAdminNewRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
-  '/api/public/healthcheck': typeof ApiPublicHealthcheckRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesById {
@@ -104,7 +96,6 @@ export interface FileRoutesById {
   '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
   '/_authenticated/admin/new': typeof AuthenticatedAdminNewRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
-  '/api/public/healthcheck': typeof ApiPublicHealthcheckRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRouteTypes {
@@ -117,7 +108,6 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/new'
     | '/admin/settings'
-    | '/api/public/healthcheck'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -128,7 +118,6 @@ export interface FileRouteTypes {
     | '/admin/analytics'
     | '/admin/new'
     | '/admin/settings'
-    | '/api/public/healthcheck'
     | '/admin'
   id:
     | '__root__'
@@ -140,7 +129,6 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/analytics'
     | '/_authenticated/admin/new'
     | '/_authenticated/admin/settings'
-    | '/api/public/healthcheck'
     | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
 }
@@ -149,7 +137,6 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   LoginRoute: typeof LoginRoute
   CardSlugRoute: typeof CardSlugRoute
-  ApiPublicHealthcheckRoute: typeof ApiPublicHealthcheckRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -188,13 +175,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/api/public/healthcheck': {
-      id: '/api/public/healthcheck'
-      path: '/api/public/healthcheck'
-      fullPath: '/api/public/healthcheck'
-      preLoaderRoute: typeof ApiPublicHealthcheckRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/settings': {
       id: '/_authenticated/admin/settings'
@@ -251,18 +231,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   LoginRoute: LoginRoute,
   CardSlugRoute: CardSlugRoute,
-  ApiPublicHealthcheckRoute: ApiPublicHealthcheckRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
