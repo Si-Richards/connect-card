@@ -66,22 +66,35 @@ export function EmployeeForm({ mode }: { mode: Mode }) {
   // If a photo_url got saved as an absolute same-origin /uploads URL by an
   // older build, collapse it back to a relative path so validation passes.
   const normalizePhotoUrl = (v: string) => {
-    if (!v) return "";
+    const trimmed = (v ?? "").trim();
+    if (!trimmed) return "";
+    if (trimmed.startsWith("uploads/")) return `/${trimmed}`;
     if (typeof window !== "undefined") {
       try {
-        const u = new URL(v, window.location.origin);
+        const u = new URL(trimmed, window.location.origin);
         if (u.origin === window.location.origin && u.pathname.startsWith("/uploads/")) {
           return u.pathname;
         }
       } catch { /* not a parseable URL — leave it */ }
     }
-    return v;
+    return trimmed;
+  };
+
+  const normalizeExternalUrl = (v: string | null | undefined) => {
+    const trimmed = (v ?? "").trim();
+    if (!trimmed || trimmed.startsWith("/uploads/") || /^https?:\/\//i.test(trimmed)) return trimmed;
+    return `https://${trimmed}`;
   };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    const candidate = { ...form, photo_url: normalizePhotoUrl(form.photo_url ?? "") };
+    const candidate = {
+      ...form,
+      website: normalizeExternalUrl(form.website),
+      linkedin: normalizeExternalUrl(form.linkedin),
+      photo_url: normalizePhotoUrl(form.photo_url ?? ""),
+    };
     const parsed = employeeInputSchema.safeParse(candidate);
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
