@@ -97,18 +97,28 @@ publicRouter.get("/wallet/:slug", async (req, res) => {
   if (!appleWalletConfigured) return res.status(501).send("Apple Wallet not configured");
   const emp = await loadActive(req.params.slug);
   if (!emp) return res.status(404).send("Not found");
-  await insertEvent(emp.id, "wallet_download", req);
-  const buf = await buildApplePass(emp, cardUrl(emp.slug));
-  res.setHeader("Content-Type", "application/vnd.apple.pkpass");
-  res.setHeader("Content-Disposition", `attachment; filename="${emp.slug}.pkpass"`);
-  res.send(buf);
+  try {
+    const buf = await buildApplePass(emp, cardUrl(emp.slug));
+    await insertEvent(emp.id, "wallet_download", req);
+    res.setHeader("Content-Type", "application/vnd.apple.pkpass");
+    res.setHeader("Content-Disposition", `attachment; filename="${emp.slug}.pkpass"`);
+    res.send(buf);
+  } catch (err: any) {
+    console.error("[apple-wallet] build failed:", err?.message ?? err);
+    res.status(500).send(`Apple Wallet pass generation failed: ${err?.message ?? "unknown error"}`);
+  }
 });
 
 publicRouter.get("/google-wallet/:slug", async (req, res) => {
   if (!googleWalletConfigured) return res.status(501).send("Google Wallet not configured");
   const emp = await loadActive(req.params.slug);
   if (!emp) return res.status(404).send("Not found");
-  await insertEvent(emp.id, "wallet_download", req);
-  const url = buildGoogleWalletSaveUrl(emp, cardUrl(emp.slug));
-  res.redirect(302, url);
+  try {
+    const url = buildGoogleWalletSaveUrl(emp, cardUrl(emp.slug));
+    await insertEvent(emp.id, "wallet_download", req);
+    res.redirect(302, url);
+  } catch (err: any) {
+    console.error("[google-wallet] build failed:", err?.message ?? err);
+    res.status(500).send(`Google Wallet link generation failed: ${err?.message ?? "unknown error"}`);
+  }
 });
