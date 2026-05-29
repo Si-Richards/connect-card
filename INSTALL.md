@@ -92,7 +92,7 @@ bun install
 VITE_API_BASE_URL=/api bun run build
 ```
 
-The build writes the static site to `dist/client/` and the SSR bundle to `dist/server/`. Nginx must serve `dist/client/` (it contains `index.html`); `dist/server/` is the Worker/SSR code and is not for nginx. Confirm `dist/client/index.html` exists before configuring the reverse proxy — if it's missing, the build didn't run and every URL returns 404 from nginx. Serve `dist/client/` from the same origin as the API (keeps `/api` relative and avoids CORS); only `/api` and `/uploads` are proxied to Node — `/card/:slug` is a SPA route and must be served by `index.html`.
+The build is a pure SPA: Vite writes `dist/index.html` and hashed assets to `dist/assets/`. Confirm `dist/index.html` exists before configuring the reverse proxy. Serve `dist/` from the same origin as the API (keeps `/api` relative and avoids CORS); only `/api` and `/uploads` are proxied to Node — `/card/:slug` is a SPA route and must be served by `index.html`.
 
 ## 4. systemd
 
@@ -108,13 +108,13 @@ journalctl -u business-card -f
 
 ### nginx
 
-A ready-to-edit config is provided at `business-card.nginx.conf`. Update `server_name` and `root` (must point at your `dist/client/` directory) and drop it into `/etc/nginx/sites-available/`.
+A ready-to-edit config is provided at `business-card.nginx.conf`. Update `server_name` and `root` (must point at your `dist/` directory) and drop it into `/etc/nginx/sites-available/`.
 
 ### Caddy
 
 ```
 card.example.com {
-  root * /opt/connect-card/dist/client
+  root * /opt/connect-card/dist
   encode gzip
 
   handle /api/* { reverse_proxy localhost:3000 }
@@ -132,8 +132,8 @@ The admin section is open in this build. Before going to production, add JWT aut
 
 ## Troubleshooting
 
-- **`directory index of "..." is forbidden`** — nginx `root` points at a directory with no `index.html`. TanStack Start's build splits output into `dist/client/` (static SPA, has `index.html` — serve this) and `dist/server/` (SSR/Worker bundle — do NOT serve). Pointing `root` at the parent `dist/` or at `dist/server/` triggers this error, as does pointing at `selfhost/dist/` (which doesn't exist — `selfhost/` is the Express API). Verify with `ls /opt/connect-card/dist/client/index.html`, set `root /opt/connect-card/dist/client;`, then `nginx -t && systemctl reload nginx`.
-- **404 on `/` and `/card/...` but API works** — nginx `root` doesn't match where you built. Run `ls /opt/connect-card/dist/client/index.html`; if missing, re-run `VITE_API_BASE_URL=/api bun run build` from the repo root. If present, set `root /opt/connect-card/dist/client;` and `nginx -t && systemctl reload nginx`.
+- **`directory index of "..." is forbidden`** — nginx `root` points at a directory with no `index.html`. Verify with `ls /opt/connect-card/dist/index.html`; if missing, re-run `VITE_API_BASE_URL=/api bun run build` from the repo root (`selfhost/` is the Express API and has no frontend build). Then set `root /opt/connect-card/dist;` and `nginx -t && systemctl reload nginx`.
+- **404 on `/` and `/card/...` but API works** — `dist/index.html` is missing or `root` is wrong. Re-run the build, then point nginx at `/opt/connect-card/dist` and reload.
 - **`/card/:slug` returns 404 but `/` works** — you're proxying `/card/*` to Express. Remove that handler; `/card/*` is a SPA route.
 - **`/api/*` returns HTML** — your reverse proxy isn't forwarding `/api`. Check the `location /api/` (nginx) or `handle /api/*` (Caddy) block.
 - **Uploads 404 after restart** — `UPLOAD_DIR` must be persistent and writable by the Node user.
