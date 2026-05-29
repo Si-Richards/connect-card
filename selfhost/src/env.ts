@@ -29,6 +29,7 @@ export const appleWalletConfigured =
   !!env.APPLE_PASS_TYPE_ID &&
   !!env.APPLE_TEAM_ID &&
   !!env.APPLE_PASS_P12_BASE64 &&
+  !!env.APPLE_PASS_P12_PASSWORD &&
   !!env.APPLE_WWDR_BASE64;
 
 export const googleWalletConfigured =
