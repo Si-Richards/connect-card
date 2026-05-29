@@ -22,6 +22,7 @@ export type Employee = {
   linkedin: string | null;
   notes: string | null;
   photo_url: string | null;
+  address: string | null;
   disabled: boolean;
   view_count: number;
   created_at: string;

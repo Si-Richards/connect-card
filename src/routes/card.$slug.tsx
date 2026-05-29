@@ -1,6 +1,6 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { z } from "zod";
-import { Mail, Phone, Smartphone, Globe, Linkedin, Download, Wallet, Link2, Check, Share2 } from "lucide-react";
+import { Mail, Phone, Smartphone, Globe, Linkedin, Download, Wallet, Link2, Check, Share2, MapPin } from "lucide-react";
 import { useEffect, useState } from "react";
 import { recordEmployeeEvent } from "@/lib/analytics.functions";
 import { api } from "@/lib/api";
@@ -204,6 +204,14 @@ function CardPage() {
               {e.linkedin && (
                 <ContactRow href={e.linkedin} icon={<Linkedin className="w-4 h-4" />} label="LinkedIn" value="View profile" />
               )}
+              {e.address && (
+                <ContactRow
+                  href={`https://maps.google.com/?q=${encodeURIComponent(e.address)}`}
+                  icon={<MapPin className="w-4 h-4" />}
+                  label="Address"
+                  value={e.address}
+                />
+              )}
             </div>
 
             {/* QR + share */}
@@ -212,7 +220,7 @@ function CardPage() {
                 <img
                   src={`/api/public/qr/${encodeURIComponent(e.slug)}?format=svg`}
                   alt="QR code"
-                  className="w-40 h-40"
+                  className="w-64 h-64"
                 />
               </div>
               <div className="flex items-center gap-2 w-full">

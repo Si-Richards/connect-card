@@ -23,6 +23,9 @@ export function buildGoogleWalletSaveUrl(e: Employee, cardUrl: string): string {
 
   const objectId = `${env.GOOGLE_WALLET_ISSUER_ID}.${e.id.replace(/-/g, "")}`;
   const photoUrl = publicImageUrl(e.photo_url);
+  const textModulesData = [
+    ...(e.address ? [{ id: "address", header: "Address", body: e.address }] : []),
+  ];
   const genericObject = {
     id: objectId,
     classId: env.GOOGLE_WALLET_CLASS_ID,
@@ -31,6 +34,7 @@ export function buildGoogleWalletSaveUrl(e: Employee, cardUrl: string): string {
     subheader: e.job_title
       ? { defaultValue: { language: "en", value: e.job_title } }
       : undefined,
+    textModulesData: textModulesData.length ? textModulesData : undefined,
     imageModulesData: photoUrl
       ? [{ mainImage: { sourceUri: { uri: photoUrl }, contentDescription: { defaultValue: { language: "en", value: `${e.full_name} photo` } } } }]
       : undefined,
