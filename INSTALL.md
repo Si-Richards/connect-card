@@ -132,8 +132,8 @@ The admin section is open in this build. Before going to production, add JWT aut
 
 ## Troubleshooting
 
-- **`directory index of "..." is forbidden`** — nginx `root` points at a directory with no `index.html`. The SPA builds to `dist/` at the **repo root** (e.g. `/opt/connect-card/dist`), NOT `selfhost/dist/` — `selfhost/` is the Express API and has no frontend build. Verify with `ls /opt/connect-card/dist/index.html`, fix the `root` directive, then `nginx -t && systemctl reload nginx`.
-- **404 on `/` and `/card/...` but API works** — nginx `root` doesn't match where you built. Run `ls /opt/connect-card/dist/index.html`; if missing, re-run `VITE_API_BASE_URL=/api bun run build` from the repo root. If present, fix the `root` directive and `nginx -t && systemctl reload nginx`.
+- **`directory index of "..." is forbidden`** — nginx `root` points at a directory with no `index.html`. TanStack Start's build splits output into `dist/client/` (static SPA, has `index.html` — serve this) and `dist/server/` (SSR/Worker bundle — do NOT serve). Pointing `root` at the parent `dist/` or at `dist/server/` triggers this error, as does pointing at `selfhost/dist/` (which doesn't exist — `selfhost/` is the Express API). Verify with `ls /opt/connect-card/dist/client/index.html`, set `root /opt/connect-card/dist/client;`, then `nginx -t && systemctl reload nginx`.
+- **404 on `/` and `/card/...` but API works** — nginx `root` doesn't match where you built. Run `ls /opt/connect-card/dist/client/index.html`; if missing, re-run `VITE_API_BASE_URL=/api bun run build` from the repo root. If present, set `root /opt/connect-card/dist/client;` and `nginx -t && systemctl reload nginx`.
 - **`/card/:slug` returns 404 but `/` works** — you're proxying `/card/*` to Express. Remove that handler; `/card/*` is a SPA route.
 - **`/api/*` returns HTML** — your reverse proxy isn't forwarding `/api`. Check the `location /api/` (nginx) or `handle /api/*` (Caddy) block.
 - **Uploads 404 after restart** — `UPLOAD_DIR` must be persistent and writable by the Node user.
