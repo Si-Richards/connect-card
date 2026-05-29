@@ -83,6 +83,17 @@ export class ApiError extends Error {
   }
 }
 
+function resolveUploadedUrl(url: string) {
+  if (!url || /^https?:\/\//.test(url)) return url;
+  if (typeof window === "undefined") return url;
+
+  const base = /^https?:\/\//.test(API_BASE)
+    ? new URL(API_BASE).origin
+    : window.location.origin;
+
+  return new URL(url, base).toString();
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
@@ -166,7 +177,8 @@ export const api = {
       window.location.replace("/login");
     }
     if (!res.ok) throw new ApiError(res.status, `Upload failed: ${res.status}`);
-    return (await res.json()) as { url: string };
+    const uploaded = (await res.json()) as { url: string };
+    return { url: resolveUploadedUrl(uploaded.url) };
   },
 
   // --------- Analytics ---------
