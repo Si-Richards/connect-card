@@ -212,7 +212,7 @@ function CardPage() {
                 <img
                   src={`/api/public/qr/${encodeURIComponent(e.slug)}?format=svg`}
                   alt="QR code"
-                  className="w-40 h-40"
+                  className="w-64 h-64"
                 />
               </div>
               <div className="flex items-center gap-2 w-full">
