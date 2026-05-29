@@ -87,6 +87,12 @@ publicRouter.get("/qr/:slug", async (req, res) => {
   res.send(png);
 });
 
+publicRouter.get("/wallet-status", (_req, res) => {
+  res.json({ apple: appleWalletConfigured, google: googleWalletConfigured });
+});
+
+
+
 publicRouter.get("/wallet/:slug", async (req, res) => {
   if (!appleWalletConfigured) return res.status(501).send("Apple Wallet not configured");
   const emp = await loadActive(req.params.slug);
