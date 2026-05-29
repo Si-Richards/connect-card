@@ -144,7 +144,7 @@ function CardPage() {
       <div className="mx-auto max-w-md">
         <div className="bg-card rounded-3xl shadow-xl overflow-hidden border border-border">
           {/* Header */}
-          <div className="relative h-32" style={{ background: brand }}>
+          <div className="relative h-32 mb-4" style={{ background: brand }}>
             {settings?.logo_url && (
               <img
                 src={settings.logo_url}
@@ -155,7 +155,7 @@ function CardPage() {
           </div>
 
           {/* Photo */}
-          <div className="-mt-16 flex flex-col items-center px-6 pb-6">
+          <div className="flex flex-col items-center px-6 pb-6">
             <div
               className="w-32 h-32 rounded-full overflow-hidden ring-4 ring-card bg-muted flex items-center justify-center text-3xl font-semibold text-muted-foreground"
             >
