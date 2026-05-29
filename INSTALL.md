@@ -108,7 +108,7 @@ journalctl -u business-card -f
 
 ### nginx
 
-A ready-to-edit config is provided at `business-card.nginx.conf`. Update `server_name` and `root` (must point at your `dist/` directory) and drop it into `/etc/nginx/sites-available/`.
+A ready-to-edit config is provided at `business-card.nginx.conf`. Update `server_name` and `root` (must point at your `dist/client/` directory) and drop it into `/etc/nginx/sites-available/`.
 
 ### Caddy
 
