@@ -52,6 +52,7 @@ export function EmployeeForm({ mode }: { mode: Mode }) {
 
   const onUpload = async (file: File) => {
     setUploading(true);
+    setError(null);
     try {
       const { url } = await api.uploadFile(file, "employee-photo");
       update("photo_url", url);
@@ -62,12 +63,30 @@ export function EmployeeForm({ mode }: { mode: Mode }) {
     }
   };
 
+  // If a photo_url got saved as an absolute same-origin /uploads URL by an
+  // older build, collapse it back to a relative path so validation passes.
+  const normalizePhotoUrl = (v: string) => {
+    if (!v) return "";
+    if (typeof window !== "undefined") {
+      try {
+        const u = new URL(v, window.location.origin);
+        if (u.origin === window.location.origin && u.pathname.startsWith("/uploads/")) {
+          return u.pathname;
+        }
+      } catch { /* not a parseable URL — leave it */ }
+    }
+    return v;
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    const parsed = employeeInputSchema.safeParse(form);
+    const candidate = { ...form, photo_url: normalizePhotoUrl(form.photo_url ?? "") };
+    const parsed = employeeInputSchema.safeParse(candidate);
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Invalid input");
+      const issue = parsed.error.issues[0];
+      const field = issue?.path?.join(".") ?? "";
+      setError(field ? `${field}: ${issue.message}` : (issue?.message ?? "Invalid input"));
       return;
     }
     setLoading(true);

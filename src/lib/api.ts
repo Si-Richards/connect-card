@@ -83,15 +83,11 @@ export class ApiError extends Error {
   }
 }
 
-function resolveUploadedUrl(url: string) {
-  if (!url || /^https?:\/\//.test(url)) return url;
-  if (typeof window === "undefined") return url;
-
-  const base = /^https?:\/\//.test(API_BASE)
-    ? new URL(API_BASE).origin
-    : window.location.origin;
-
-  return new URL(url, base).toString();
+// Return uploaded URLs verbatim. The self-hosted backend returns
+// relative paths like `/uploads/<file>`, which the SPA stores as-is
+// and renders via the same origin (nginx serves `/uploads/*`).
+function normalizeUploadedUrl(url: string) {
+  return (url ?? "").trim();
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -178,7 +174,7 @@ export const api = {
     }
     if (!res.ok) throw new ApiError(res.status, `Upload failed: ${res.status}`);
     const uploaded = (await res.json()) as { url: string };
-    return { url: resolveUploadedUrl(uploaded.url) };
+    return { url: normalizeUploadedUrl(uploaded.url) };
   },
 
   // --------- Analytics ---------

@@ -1,61 +1,51 @@
-## 1. Fix "Invalid url" on photo upload
+## Diagnosis
 
-**Cause:** the selfhost upload endpoint returns a relative path like `/uploads/abc.png`, but the form schema (`src/lib/employees.schema.ts`) validates `photo_url` with `z.string().url()`, which only accepts absolute URLs. Saving therefore fails with "Invalid url".
+The upload itself is likely succeeding, but the employee form is failing validation before save.
 
-**Fix:** relax `photo_url` in `src/lib/employees.schema.ts` to accept either an absolute URL or a relative path starting with `/uploads/`:
+The current code has two conflicting behaviours:
 
-```ts
-photo_url: z
-  .string()
-  .trim()
-  .max(500)
-  .refine(
-    (v) => v === "" || v.startsWith("/uploads/") || /^https?:\/\//.test(v),
-    "Must be an uploaded file or a full URL",
-  )
-  .optional()
-  .or(z.literal(""))
-  .nullable(),
+- The self-hosted API returns uploaded files as a relative path: `/uploads/<file>`.
+- The frontend now converts that to an absolute URL before storing it, e.g. `https://your-domain.com/uploads/<file>`.
+- The employee form then validates the full form with `employeeInputSchema` on Save.
+- The visible message `Invalid url` is coming from Zod validation, most likely because the deployed self-hosted frontend is still using an older schema that requires `photo_url` to be a full `.url()`, or because a stale/invalid value remains in the hidden `photo_url` state.
+
+## Plan
+
+1. **Make upload URL handling deterministic**
+   - Change `api.uploadFile()` so it returns the exact server path (`/uploads/...`) for self-hosted uploads instead of converting it to an absolute URL.
+   - Keep absolute URLs untouched only when the backend explicitly returns one.
+
+2. **Make employee photo validation match self-hosted storage**
+   - Keep accepting:
+     - empty string
+     - `null`
+     - `/uploads/...`
+     - `http://...` / `https://...`
+   - Improve the error message so it says the photo URL is invalid, not the generic `Invalid url`.
+
+3. **Add a guard at save time**
+   - Before validating/saving, normalise `photo_url`:
+     - if empty, save as empty/null-compatible value
+     - if it is a same-origin `/uploads/...` URL that was previously converted to absolute, convert it back to `/uploads/...`
+   - This makes old uploaded values safe even if the form already contains an absolute self-host URL.
+
+4. **Improve upload error visibility**
+   - If upload succeeds, clear any previous error immediately.
+   - If save validation fails, show the exact field-specific issue so the user can tell whether it is the photo, website, LinkedIn, etc.
+
+5. **Self-host deployment note**
+   - After implementation, rebuild and restart the self-hosted app so the browser is not running the old validation bundle:
+
+```bash
+cd /opt/connect-card
+bun install
+bun run build
+sudo systemctl restart business-card
+sudo systemctl reload nginx
 ```
 
-No backend change needed — the card page already renders `/uploads/...` via the same origin.
+## Files to change
 
-## 2. Restyle Apple Wallet pass
-
-In `selfhost/src/lib/wallet-apple.ts`, change `createPassJson()` so the generic pass uses:
-
-- `headerFields`: company (e.g. "VoiceHost") — renders top-right, above the name
-- `primaryFields`: full name
-- `secondaryFields`: job title only (one row)
-- `auxiliaryFields`: email only (one row)
-- `backFields`: mobile, office phone, website, linkedin (extra detail on the back)
-
-To get email and mobile in a single column (one under the other) we keep one field per row: email in `secondaryFields`, mobile in `auxiliaryFields`. Apple stacks these rows vertically, producing the requested single-column look.
-
-Resulting `generic` block:
-
-```ts
-generic: {
-  headerFields: e.company ? [{ key: "company", label: "Company", value: e.company }] : [],
-  primaryFields: [{ key: "name", label: "Name", value: e.full_name }],
-  secondaryFields: [
-    ...(e.job_title ? [{ key: "title", label: "Title", value: e.job_title }] : []),
-    ...(e.email ? [{ key: "email", label: "Email", value: e.email }] : []),
-  ],
-  auxiliaryFields: e.mobile ? [{ key: "mobile", label: "Mobile", value: e.mobile }] : [],
-  backFields: [
-    ...(e.office_phone ? [{ key: "office", label: "Office", value: e.office_phone }] : []),
-    ...(e.website ? [{ key: "website", label: "Website", value: e.website }] : []),
-    ...(e.linkedin ? [{ key: "linkedin", label: "LinkedIn", value: e.linkedin }] : []),
-  ],
-},
-```
-
-Note: if both job title and email go in `secondaryFields`, iOS renders them as two columns side-by-side. If you want strictly email-then-mobile stacked with nothing beside them, drop the title from `secondaryFields` (move it to `headerFields` alongside company, or to `backFields`). I'll go with: company in header, name primary, **email in secondary (single field = full width)**, **mobile in auxiliary (single field = full width)**, job title + everything else in backFields — that exactly matches "mobile under email, one column".
-
-## Deploy
-On the VPS after pulling:
-```
-cd /opt/connect-card/selfhost && npm run build && sudo systemctl restart business-card
-```
-(Frontend change requires rebuilding the SPA the usual way.)
+- `src/lib/api.ts`
+- `src/lib/employees.schema.ts`
+- `src/routes/_authenticated/admin.new.tsx`
