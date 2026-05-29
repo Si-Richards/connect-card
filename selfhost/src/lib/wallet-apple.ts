@@ -96,15 +96,11 @@ function createPassJson(e: Employee, cardUrl: string): Buffer {
         headerFields: e.company
           ? [{ key: "company", label: "Company", value: e.company }]
           : [],
-        primaryFields: [{ key: "name", label: "Name", value: e.full_name }],
-        secondaryFields: e.email
-          ? [{ key: "email", label: "Email", value: e.email }]
-          : [],
-        auxiliaryFields: e.mobile
-          ? [{ key: "mobile", label: "Mobile", value: e.mobile }]
+        secondaryFields: [{ key: "name", label: "Name", value: e.full_name }],
+        auxiliaryFields: e.job_title
+          ? [{ key: "position", label: "Position", value: e.job_title }]
           : [],
         backFields: [
-          ...(e.job_title ? [{ key: "title", label: "Title", value: e.job_title }] : []),
           ...(e.office_phone ? [{ key: "office", label: "Office", value: e.office_phone }] : []),
           ...(e.website ? [{ key: "website", label: "Website", value: e.website }] : []),
           ...(e.linkedin ? [{ key: "linkedin", label: "LinkedIn", value: e.linkedin }] : []),
