@@ -20,7 +20,7 @@ export function buildGoogleWalletSaveUrl(e: Employee, cardUrl: string): string {
       ? { defaultValue: { language: "en", value: e.job_title } }
       : undefined,
     barcode: { type: "QR_CODE", value: cardUrl },
-    hexBackgroundColor: "#0f172a",
+    hexBackgroundColor: "#ff6600",
   };
 
   const claims = {
