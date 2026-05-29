@@ -1,34 +1,32 @@
 ## Problem
 
-Nginx error: `directory index of "/opt/connect-card/selfhost/dist/" is forbidden`
+`bun run build` on TanStack Start produces:
+- `dist/client/` — static SPA assets including `index.html` (what nginx should serve)
+- `dist/server/` — SSR bundle (Node/Worker code, not for nginx)
 
-Two things are wrong:
-
-1. **Wrong `root` path on the server.** The frontend (TanStack Start SPA) builds to `dist/` at the **repo root**, not inside `selfhost/`. `selfhost/` is the Express backend — it has no `dist/` with an `index.html`. So nginx is pointed at a directory that has no `index.html`, and since `autoindex` is off, it returns "directory index forbidden".
-2. The committed `selfhost/business-card.nginx.conf` currently uses `/opt/connect-card/dist` which is also a guess — it only works if the repo is cloned to `/opt/connect-card` and built from the root.
+There is no `dist/index.html` at the top of `dist/`. The committed nginx config points `root` at `/opt/connect-card/dist`, which contains only those two subfolders — so nginx finds no `index.html` and returns "directory index forbidden".
 
 ## Fix
 
-Update `selfhost/business-card.nginx.conf` so the `root` directive and the surrounding comments make it unambiguous where the SPA build output lives, and add a short note that `selfhost/dist` is **not** the right path.
+### `selfhost/business-card.nginx.conf`
+- Change `root /opt/connect-card/dist;` → `root /opt/connect-card/dist/client;`
+- Update the surrounding comment to explain that TanStack Start splits the build into `dist/client/` (static, served by nginx) and `dist/server/` (SSR bundle, ignored here since we're serving as a pure SPA).
+- Keep everything else (gzip, cache, `/api` and `/uploads` proxies, SPA fallback, security headers) unchanged.
 
-### Changes to `selfhost/business-card.nginx.conf`
+### `INSTALL.md`
+- Section 3 (Frontend): update the verification step from `ls /opt/connect-card/dist/index.html` → `ls /opt/connect-card/dist/client/index.html`.
+- Update the Caddy snippet `root * /opt/connect-card/dist` → `root * /opt/connect-card/dist/client`.
+- Troubleshooting bullets: replace the "`dist/` at repo root" wording with the correct path `dist/client/`, and explicitly note that `dist/server/` is the SSR bundle and must not be the nginx root.
 
-- Keep `root /opt/connect-card/dist;` (repo cloned to `/opt/connect-card`, built from repo root with `bun run build` → produces `dist/index.html`).
-- Expand the `CHANGE ME` comment to explicitly say:
-  - The path must be the directory that contains `index.html` from the **frontend** build (repo root `dist/`), not `selfhost/dist/`.
-  - `selfhost/` only contains the Express API; it has no `dist/index.html`.
-- Keep `index index.html;` (already present).
-- No other changes to proxy blocks, gzip, caching, or security headers.
+No source code, route, or backend changes.
 
-### Changes to `INSTALL.md`
+## What the user does on the server
 
-Add one troubleshooting bullet:
-- **`directory index ... is forbidden`** → nginx `root` points at a directory with no `index.html`. Verify `ls /opt/connect-card/dist/index.html` exists. If you pointed it at `selfhost/dist`, that is wrong — the SPA builds to `dist/` at the repo root, not inside `selfhost/`.
-
-## What the user needs to do on the server
-
-Either:
-- **Option A (recommended):** fix the nginx `root` to point at the repo-root `dist/` (e.g. `/opt/connect-card/dist`), run `bun install && bun run build` from the repo root, then `nginx -t && systemctl reload nginx`.
-- **Option B:** if they really want the build output under `selfhost/dist`, they need to actually build the frontend into that path (non-standard) — not recommended.
-
-No source code, routes, or backend changes.
+```bash
+cd /opt/connect-card
+VITE_API_BASE_URL=/api bun install && bun run build
+ls dist/client/index.html        # must exist
+sudo sed -i 's|/opt/connect-card/dist;|/opt/connect-card/dist/client;|' \
+  /etc/nginx/sites-available/business-card
+sudo nginx -t && sudo systemctl reload nginx
+```
