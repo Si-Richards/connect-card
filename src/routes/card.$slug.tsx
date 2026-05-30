@@ -55,7 +55,7 @@ export const Route = createFileRoute("/card/$slug")({
               { name: "twitter:image", content: e.photo_url },
             ]
           : []),
-        ...(e.disabled ? [{ name: "robots", content: "noindex" }] : []),
+        { name: "robots", content: "noindex, nofollow" },
       ],
       links: [{ rel: "canonical", href: path }],
       scripts: [
@@ -67,8 +67,6 @@ export const Route = createFileRoute("/card/$slug")({
             name,
             jobTitle: e.job_title || undefined,
             worksFor: e.company ? { "@type": "Organization", name: e.company } : undefined,
-            email: e.email || undefined,
-            telephone: e.mobile || e.office_phone || undefined,
             url: e.website || undefined,
             image: e.photo_url || undefined,
             sameAs: e.linkedin ? [e.linkedin] : undefined,
