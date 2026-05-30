@@ -1,86 +1,126 @@
+# Branding, White-label QR & Booking Link
 
-Implement steps 1–6 of the scraping-mitigation review. No edge/CDN work (step 7) and no app-level rate limiting.
+Three features. Apple Wallet auto-update is skipped per your choice.
 
-## 1. Trim the public card payload
+---
 
-`selfhost/src/routes/public.ts` — in `GET /api/public/cards/:slug`, project the employee to a public DTO before responding:
+## 1. Company branding (global + per-employee overrides)
 
-Keep: `slug`, `full_name`, `job_title`, `company`, `email`, `office_phone`, `mobile`, `website`, `linkedin`, `address`, `photo_url`.
-Drop: `notes`, `id`, `view_count`, `disabled`, `created_at`, `updated_at`.
+### Schema (MySQL — `schema.sql` + new migration `selfhost/migrations/`)
 
-(`/api/employees` admin routes stay unchanged — they keep returning the full row for the dashboard.)
+`company_settings` — add:
+- `cover_image_url VARCHAR(512) NULL`
+- `accent_color VARCHAR(16) NULL` (secondary brand color)
 
-## 2. Stop feeding harvesters via page metadata
+`employees` — add nullable overrides:
+- `brand_color VARCHAR(16) NULL`
+- `accent_color VARCHAR(16) NULL`
+- `logo_url VARCHAR(512) NULL`
+- `cover_image_url VARCHAR(512) NULL`
 
-`src/routes/card.$slug.tsx` `head()`:
+Effective branding = `employee.* ?? company_settings.*`. Resolved once on the server in `GET /api/public/cards/:slug` and returned as a `branding` object.
 
-- Remove `email` and `telephone` from the JSON-LD object.
-- Always emit `{ name: "robots", content: "noindex, nofollow" }` for `/card/*` (drop the conditional that only sets it when disabled). Cards remain reachable by direct link / QR / wallet pass; they just don't get indexed.
+### Backend (`selfhost/src/routes/`)
 
-`selfhost/src/routes/public.ts` — set response header `X-Robots-Tag: noindex, nofollow` on:
-- `GET /api/public/cards/:slug`
-- `GET /api/public/vcard/:slug`
-- `GET /api/public/qr/:slug`
-- `GET /api/public/wallet/:slug`
-- `GET /api/public/google-wallet/:slug`
+- `public.ts` — extend `toPublicCard` payload with `branding: { logo_url, cover_image_url, brand_color, accent_color, company_name }`.
+- `employees.ts` — accept the four new override fields in create/update Zod schema; trim+validate hex colors and URLs.
+- `settings.ts` — accept `cover_image_url`, `accent_color`.
+- `uploads.ts` — already handles images; reuse the `company-asset` and `employee-photo` kinds.
 
-## 3. Make new slugs unguessable
+### Frontend
 
-`selfhost/src/routes/employees.ts` — in `POST /`, if the admin-supplied slug does not already end with a `-[a-z0-9]{6,}` suffix, append `-` plus 6 chars of `crypto.randomBytes(4).toString("base64url")` lowercased (strip non `[a-z0-9]`). Existing slugs are unaffected; old links keep working.
+- `src/lib/api.ts` & `src/lib/employees.schema.ts` — add the new fields.
+- `src/routes/_authenticated/admin.settings.tsx` — add cover image upload + accent color picker.
+- `src/routes/_authenticated/admin.new.tsx` (and `admin.$id.tsx`) — new "Branding overrides" collapsible section with logo upload, cover upload, brand color, accent color (all optional, empty = use company default).
+- `src/routes/card.$slug.tsx` — read `branding` from the API response and apply:
+  - cover image as hero background
+  - resolved brand color as CSS var (replaces hard-coded orange / current company color)
+  - logo from `branding.logo_url`
+  - company name from `branding.company_name`
 
-No frontend changes required — the admin UI already shows the resulting slug after save.
+### Wallet passes
 
-## 4. Cheap bot deterrents
+- `selfhost/src/lib/wallet-apple.ts` & `wallet-google.ts` — accept the resolved `branding` and use `brand_color` for `backgroundColor` / hex theming, and the resolved logo where each format supports it (Apple `logo.png` strip, Google `logoUri`).
 
-`selfhost/src/routes/public.ts`:
+---
 
-- On `GET /api/public/cards/:slug`, `GET /api/public/vcard/:slug`, and `GET /api/public/wallet*/:slug`, set `Cache-Control: private, no-store`.
-- Add a small `looksLikeBrowser(req)` helper: returns `false` when both `Accept` is missing/empty AND `User-Agent` is missing or matches `/(curl|wget|python-requests|httpie|go-http-client|libwww-perl)/i`. When it returns `false`, respond `403`. Apply to the same three endpoints above. Real browsers always send `Accept`, so this won't affect users.
-- On `POST /api/public/events`, additionally drop (return `{ ok: false }` without inserting) when the `Referer` header is present but its origin doesn't match `env.APP_ORIGIN`. Missing Referer is allowed (privacy modes).
+## 2. White-label QR code with logo in middle
 
-## 5. Signed, short-lived URLs for vCard + wallet
+### Backend
 
-New helper `selfhost/src/lib/signed-url.ts`:
-- `signResource(slug, kind, ttlSec=600)` → returns `{ exp, sig }` where `sig = hmacSha256(SESSION_SECRET, ${kind}:${slug}:${exp}).slice(0,32)`.
-- `verifyResource(slug, kind, exp, sig)` → constant-time compare, reject if expired.
+- `selfhost/src/lib/qr.ts` — switch from `qrcode` raw output to a composited PNG:
+  1. Generate QR at high error-correction (`errorCorrectionLevel: 'H'`) so ~20% of modules can be obscured.
+  2. Load company `logo_url` (from `company_settings`, resolved to a local `/uploads/...` path or fetched URL).
+  3. Use `sharp` (already a dep via Apple wallet) to:
+     - Render QR to PNG buffer
+     - Resize logo to ~22% of QR size, add white rounded square padding behind it
+     - Composite logo at center
+  4. Return the buffer.
+- Keep `qrSvg()` as plain (no logo) for fallback / print exports, OR generate SVG with embedded base64 logo. Default to PNG with logo for all card-facing QR usage.
+- New route `GET /api/public/cards/:slug/qr.png` (signed token, same pattern as vCard/wallet) returns the branded PNG. Cache `Cache-Control: private, max-age=300`.
 
-`selfhost/src/routes/public.ts`:
-- In `GET /api/public/cards/:slug`, attach a `tokens` object to the response: `{ vcard: {exp, sig}, apple: {...}, google: {...} }` (each minted for its own kind).
-- In `GET /api/public/vcard/:slug`, `GET /api/public/wallet/:slug`, `GET /api/public/google-wallet/:slug`: require `?exp=&sig=` query params and verify with `verifyResource`. On failure return `403`. (`/qr/:slug` stays open — the QR encodes the public card URL, not contact data.)
+### Frontend
 
-`src/lib/api.ts` — extend the `getEmployeeBySlug` response type with optional `tokens`.
+- `src/routes/card.$slug.tsx` — replace any client-side `qrcode` rendering with `<img src={qrUrl}>` pointing at the new signed endpoint.
+- Apple/Google wallet pass generation continues using the raw URL in the barcode field (Wallet renders its own QR — branded QR is only for on-screen display & print).
 
-`src/routes/card.$slug.tsx`:
-- Build `vcfUrl`, `appleUrl`, `googleUrl` from `loaderData.tokens` (e.g. `/api/public/vcard/${slug}?exp=${t.exp}&sig=${t.sig}`).
-- Pass tokens into `<WalletButtons />` as props (replace the current hardcoded URLs).
+---
 
-Tokens TTL = 10 min — long enough for the user to click Save, short enough to be useless for batch scraping.
+## 3. Per-employee booking link (Calendly / Cal.com)
 
-## 6. robots.txt
+### Schema
 
-Create `public/robots.txt`:
+`employees` — add:
+- `booking_url VARCHAR(512) NULL`
 
+### Backend
+
+- `employees.ts` Zod schema — add `booking_url` with same URL validation pattern used for `website`/`linkedin`.
+- `public.ts` `toPublicCard` — include `booking_url` in the public payload.
+- `selfhost/src/lib/vcard.ts` — append booking_url as an additional `URL;type=Booking:` line so it shows up in saved contacts.
+- `wallet-apple.ts` / `wallet-google.ts` — add to back fields as "Book a meeting".
+
+### Frontend
+
+- `src/lib/api.ts`, `employees.schema.ts` — add `booking_url`.
+- `src/routes/_authenticated/admin.new.tsx` / `admin.$id.tsx` — new input "Booking link (Calendly / Cal.com)" with placeholder `https://cal.com/your-handle`.
+- `src/routes/card.$slug.tsx` — when present, render a prominent **"Book a meeting"** CTA button (opens in new tab, tracked as a new `booking_click` event).
+- `selfhost/src/lib/events.ts` + analytics — add `booking_click` to the event_type enum and analytics buckets.
+
+---
+
+## Technical details
+
+### DB migrations
+Two parallel migrations:
+- `selfhost/migrations/202605XX_branding_overrides.sql` — adds `company_settings.cover_image_url`, `company_settings.accent_color`, and employee override columns.
+- `selfhost/migrations/202605XX_booking_link.sql` — adds `employees.booking_url`, extends `card_events.event_type` enum with `booking_click`.
+
+Update `schema.sql` to match (canonical reference).
+
+### Signed QR endpoint
+Reuse `signed-url.ts`. `getEmployeeBySlug` returns an additional `tokens.qr` entry; the SPA composes `/api/public/cards/:slug/qr.png?exp=&sig=`.
+
+### Color tokens
+On `card.$slug.tsx`, set `style={{ '--brand': branding.brand_color, '--brand-accent': branding.accent_color }}` on the root and reference via Tailwind arbitrary values (`bg-[var(--brand)]`). Falls back to design tokens when null.
+
+### Files touched (summary)
+- `schema.sql` + 2 new migration files
+- `selfhost/src/routes/{public,employees,settings}.ts`
+- `selfhost/src/routes/types.ts`
+- `selfhost/src/lib/{qr,vcard,wallet-apple,wallet-google,events}.ts`
+- `src/lib/api.ts`, `src/lib/employees.schema.ts`
+- `src/routes/_authenticated/admin.{new,$id,settings}.tsx`
+- `src/routes/card.$slug.tsx`
+
+### Out of scope (per your answers)
+- Apple Wallet APNs push / auto-update — skipped.
+- Embedded Calendly widget and native availability slots — skipped; link-only.
+
+### Deploy
 ```
-User-agent: *
-Disallow: /card/
-Disallow: /api/
-Allow: /
-```
-
-Keeps the marketing site (root + future pages) indexable while excluding the card pages and API by default.
-
-## Out of scope (per your call)
-
-- No nginx / Cloudflare rate limiting (step 7).
-- No app-level rate limiting.
-- No CAPTCHA on the card page.
-
-## Deploy
-
-After merging, on the VPS:
-
-```bash
 cd /opt/connect-card && bun install && bun run build
 cd /opt/connect-card/selfhost && npm install && npm run build
+# run new migrations against MySQL
 sudo systemctl restart business-card
 ```
