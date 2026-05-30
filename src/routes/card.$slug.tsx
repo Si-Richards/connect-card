@@ -300,9 +300,14 @@ function CardPage() {
         </div>
 
         {settings?.company_name && (
-          <p className="text-center text-xs text-muted-foreground mt-4">
-            Powered by {settings.company_name}
-          </p>
+          <div className="flex items-center justify-center gap-2 mt-6 opacity-70">
+            {branding?.logo_url && (
+              <img src={branding.logo_url} alt="" className="h-4 w-4 object-contain" />
+            )}
+            <p className="text-center text-xs text-muted-foreground">
+              {settings.company_name}
+            </p>
+          </div>
         )}
       </div>
     </div>
