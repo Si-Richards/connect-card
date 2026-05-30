@@ -133,9 +133,15 @@ export const api = {
   listEmployees: () => request<{ employees: Employee[] }>("/employees"),
   getEmployee: (id: string) => request<{ employee: Employee }>(`/employees/${id}`),
   getEmployeeBySlug: (slug: string) =>
-    request<{ employee: Employee | null; settings: CompanySettings | null }>(
-      `/public/cards/${encodeURIComponent(slug)}`,
-    ),
+    request<{
+      employee: Employee | null;
+      settings: CompanySettings | null;
+      tokens: {
+        vcard: { exp: number; sig: string };
+        apple: { exp: number; sig: string };
+        google: { exp: number; sig: string };
+      } | null;
+    }>(`/public/cards/${encodeURIComponent(slug)}`),
   createEmployee: (values: Partial<Employee>) =>
     request<{ employee: Employee }>("/employees", {
       method: "POST",
