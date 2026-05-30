@@ -1,12 +1,27 @@
 import { Router } from "express";
 import { z } from "zod";
 import { v4 as uuid } from "uuid";
+import crypto from "node:crypto";
 import { exec, query } from "../db.js";
 import { requireAdmin } from "../auth.js";
 import type { Employee } from "./types.js";
 
 export const employeesRouter = Router();
 employeesRouter.use(requireAdmin);
+
+// Append a 6-char random suffix to slugs that don't already look randomized.
+// Defeats trivial enumeration like /card/john-smith.
+function randomizeSlug(slug: string): string {
+  if (/-[a-z0-9]{6,}$/.test(slug)) return slug;
+  const suffix = crypto
+    .randomBytes(6)
+    .toString("base64url")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+    .slice(0, 6)
+    .padEnd(6, "0");
+  return `${slug}-${suffix}`;
+}
 
 const EmployeeSchema = z.object({
   slug: z
@@ -64,7 +79,7 @@ employeesRouter.post("/", async (req, res) => {
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         id,
-        v.slug,
+        randomizeSlug(v.slug),
         v.full_name,
         v.job_title ?? null,
         v.company ?? null,
