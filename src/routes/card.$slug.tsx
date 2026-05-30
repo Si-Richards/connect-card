@@ -1,9 +1,10 @@
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { z } from "zod";
-import { Mail, Phone, Smartphone, Globe, Linkedin, Download, Wallet, Link2, Check, Share2, MapPin } from "lucide-react";
+import { Mail, Phone, Smartphone, Globe, Linkedin, Download, Wallet, Link2, Check, Share2, MapPin, Calendar } from "lucide-react";
 import { useEffect, useState } from "react";
 import { recordEmployeeEvent } from "@/lib/analytics.functions";
 import { api } from "@/lib/api";
+
 
 const cardSearchSchema = z.object({
   src: z.string().max(32).optional(),
@@ -126,7 +127,12 @@ function CardPage() {
     );
   }
 
-  const brand = settings?.brand_color || "#0f172a";
+  const branding = e.branding ?? {};
+  const brand = branding.brand_color || settings?.brand_color || "#0f172a";
+  const accent = branding.accent_color || settings?.accent_color || "#ffffff";
+  const logo = branding.logo_url || settings?.logo_url;
+  const cover = branding.cover_image_url || settings?.cover_image_url;
+  const companyName = branding.company_name || settings?.company_name;
   const tokenQs = (t: { exp: number; sig: string }) => `?exp=${t.exp}&sig=${encodeURIComponent(t.sig)}`;
   const vcfUrl = tokens
     ? `/api/public/vcard/${encodeURIComponent(e.slug)}${tokenQs(tokens.vcard)}`
@@ -140,17 +146,39 @@ function CardPage() {
     .join("")
     .toUpperCase();
 
+  const onBookingClick = () => {
+    recordEmployeeEvent({
+      data: {
+        slug: e.slug,
+        eventType: "booking_click",
+        source: null,
+        userAgent: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 512) : null,
+        referrer: typeof document !== "undefined" && document.referrer ? document.referrer.slice(0, 1024) : null,
+      },
+    }).catch(() => {});
+  };
+
   return (
-    <div className="min-h-screen bg-muted/30 py-6 px-4">
+    <div
+      className="min-h-screen bg-muted/30 py-6 px-4"
+      style={{ ["--brand" as any]: brand, ["--brand-accent" as any]: accent }}
+    >
       <div className="mx-auto max-w-md">
         <div className="bg-card rounded-3xl shadow-xl overflow-hidden border border-border">
           {/* Header */}
-          <div className="relative h-32 mb-4" style={{ background: brand }}>
-            {settings?.logo_url && (
+          <div
+            className="relative h-32 mb-4"
+            style={
+              cover
+                ? { backgroundImage: `url(${cover})`, backgroundSize: "cover", backgroundPosition: "center" }
+                : { background: brand }
+            }
+          >
+            {logo && (
               <img
-                src={settings.logo_url}
-                alt={settings.company_name || "Company"}
-                className="absolute top-4 left-4 h-8 object-contain"
+                src={logo}
+                alt={companyName || "Company"}
+                className="absolute top-4 left-4 h-8 object-contain drop-shadow"
               />
             )}
           </div>
@@ -185,6 +213,19 @@ function CardPage() {
                 <Download className="w-4 h-4" />
                 Save to Contacts (vCard)
               </a>
+              {e.booking_url && (
+                <a
+                  href={e.booking_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={onBookingClick}
+                  className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium border-2 transition-colors hover:bg-muted/40"
+                  style={{ borderColor: brand, color: brand }}
+                >
+                  <Calendar className="w-4 h-4" />
+                  Book a meeting
+                </a>
+              )}
               <WalletButtons slug={e.slug} brand={brand} tokens={tokens} />
             </div>
 
@@ -219,11 +260,12 @@ function CardPage() {
             <div className="w-full mt-6 flex flex-col items-center gap-3">
               <div className="bg-white p-3 rounded-xl border border-border">
                 <img
-                  src={`/api/public/qr/${encodeURIComponent(e.slug)}?format=svg`}
+                  src={`/api/public/qr/${encodeURIComponent(e.slug)}?format=png`}
                   alt="QR code"
                   className="w-64 h-64"
                 />
               </div>
+
               <div className="flex items-center gap-2 w-full">
                 <button
                   onClick={async () => {
