@@ -8,7 +8,7 @@ import { api } from "./api";
 type RecordInput = {
   data: {
     slug: string;
-    eventType: "view" | "scan";
+    eventType: "view" | "scan" | "booking_click";
     source?: string | null;
     userAgent?: string | null;
     referrer?: string | null;

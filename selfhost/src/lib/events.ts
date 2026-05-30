@@ -4,7 +4,12 @@ import type { Request } from "express";
 import { exec } from "../db.js";
 import { env } from "../env.js";
 
-export type EventType = "view" | "qr_scan" | "vcard_download" | "wallet_download";
+export type EventType =
+  | "view"
+  | "qr_scan"
+  | "vcard_download"
+  | "wallet_download"
+  | "booking_click";
 
 function hashIp(req: Request): string | null {
   const ip =

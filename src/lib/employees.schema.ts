@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-// Accept empty string, /uploads/... path, absolute http(s) URL, or a domain
-// that will be normalized at save time.
 const optionalUrl = (field: string) =>
   z
     .string()
@@ -18,6 +16,15 @@ const optionalUrl = (field: string) =>
     .optional()
     .or(z.literal(""))
     .nullable();
+
+const optionalHex = z
+  .string()
+  .trim()
+  .max(16)
+  .refine((v) => v === "" || /^#[0-9a-fA-F]{3,8}$/.test(v), "Must be a hex color like #ff6600")
+  .optional()
+  .or(z.literal(""))
+  .nullable();
 
 export const employeeInputSchema = z.object({
   slug: z
@@ -43,6 +50,11 @@ export const employeeInputSchema = z.object({
   notes: z.string().trim().max(1000).optional().or(z.literal("")),
   photo_url: optionalUrl("Photo URL"),
   address: z.string().trim().max(500).optional().or(z.literal("")).nullable(),
+  brand_color: optionalHex,
+  accent_color: optionalHex,
+  logo_url: optionalUrl("Logo URL"),
+  cover_image_url: optionalUrl("Cover image URL"),
+  booking_url: optionalUrl("Booking link"),
   disabled: z.boolean().optional().default(false),
 });
 

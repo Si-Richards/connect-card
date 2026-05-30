@@ -31,12 +31,13 @@ const RANGES = [7, 30, 90] as const;
 type Range = (typeof RANGES)[number];
 
 function sumTotals(totals: Record<string, EventBucket>): EventBucket {
-  const out: EventBucket = { views: 0, scans: 0, vcards: 0, wallets: 0 };
+  const out: EventBucket = { views: 0, scans: 0, vcards: 0, wallets: 0, bookings: 0 };
   for (const k of Object.keys(totals)) {
     out.views += totals[k].views;
     out.scans += totals[k].scans;
     out.vcards += totals[k].vcards;
     out.wallets += totals[k].wallets;
+    out.bookings += totals[k].bookings ?? 0;
   }
   return out;
 }
@@ -102,7 +103,7 @@ function AnalyticsPage() {
     return employees
       .map((e: any) => ({
         ...e,
-        t: totals[e.id] ?? { views: 0, scans: 0, vcards: 0, wallets: 0 },
+        t: totals[e.id] ?? { views: 0, scans: 0, vcards: 0, wallets: 0, bookings: 0 },
       }))
       .sort(
         (a: any, b: any) =>

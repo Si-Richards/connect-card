@@ -11,7 +11,7 @@ const DaysSchema = z.coerce.number().int().min(1).max(365).default(30);
 type Row = { date: string; event_type: string; n: number };
 
 function emptyBucket() {
-  return { views: 0, scans: 0, vcards: 0, wallets: 0 };
+  return { views: 0, scans: 0, vcards: 0, wallets: 0, bookings: 0 };
 }
 
 function bumpBucket(b: ReturnType<typeof emptyBucket>, type: string, n: number) {
@@ -19,6 +19,7 @@ function bumpBucket(b: ReturnType<typeof emptyBucket>, type: string, n: number) 
   else if (type === "qr_scan") b.scans += n;
   else if (type === "vcard_download") b.vcards += n;
   else if (type === "wallet_download") b.wallets += n;
+  else if (type === "booking_click") b.bookings += n;
 }
 
 analyticsRouter.get("/summary", async (req, res) => {

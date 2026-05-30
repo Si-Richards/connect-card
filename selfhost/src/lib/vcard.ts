@@ -18,6 +18,7 @@ export function buildVCard(e: Employee): string {
   if (e.mobile) lines.push(`TEL;TYPE=CELL,VOICE:${esc(e.mobile)}`);
   if (e.website) lines.push(`URL:${esc(e.website)}`);
   if (e.linkedin) lines.push(`URL;TYPE=LinkedIn:${esc(e.linkedin)}`);
+  if (e.booking_url) lines.push(`URL;TYPE=Booking:${esc(e.booking_url)}`);
   if (e.address) lines.push(`ADR;TYPE=WORK:;;${esc(e.address)};;;;`);
   if (e.notes) lines.push(`NOTE:${esc(e.notes)}`);
   lines.push("END:VCARD");

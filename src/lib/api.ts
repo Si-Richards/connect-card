@@ -23,6 +23,11 @@ export type Employee = {
   notes: string | null;
   photo_url: string | null;
   address: string | null;
+  brand_color: string | null;
+  accent_color: string | null;
+  logo_url: string | null;
+  cover_image_url: string | null;
+  booking_url: string | null;
   disabled: boolean;
   view_count: number;
   created_at: string;
@@ -32,7 +37,9 @@ export type Employee = {
 export type CompanySettings = {
   company_name: string | null;
   brand_color: string | null;
+  accent_color: string | null;
   logo_url: string | null;
+  cover_image_url: string | null;
 };
 
 export type EventBucket = {
@@ -40,6 +47,7 @@ export type EventBucket = {
   scans: number;
   vcards: number;
   wallets: number;
+  bookings: number;
 };
 
 export type AnalyticsTotals = Record<string, EventBucket>;
@@ -189,7 +197,7 @@ export const api = {
   // --------- Analytics ---------
   recordEvent: (input: {
     slug: string;
-    eventType: "view" | "scan";
+    eventType: "view" | "scan" | "booking_click";
     source?: string | null;
     userAgent?: string | null;
     referrer?: string | null;
