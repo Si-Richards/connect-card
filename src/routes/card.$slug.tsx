@@ -299,10 +299,15 @@ function CardPage() {
           </div>
         </div>
 
-        {settings?.company_name && (
-          <p className="text-center text-xs text-muted-foreground mt-4">
-            Powered by {settings.company_name}
-          </p>
+        {companyName && (
+          <div className="flex items-center justify-center gap-2 mt-6 opacity-70">
+            {logo && (
+              <img src={logo} alt="" className="h-4 w-4 object-contain" />
+            )}
+            <p className="text-center text-xs text-muted-foreground">
+              {companyName}
+            </p>
+          </div>
         )}
       </div>
     </div>
