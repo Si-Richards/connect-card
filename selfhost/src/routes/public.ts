@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import { z } from "zod";
 import { query } from "../db.js";
 import { env } from "../env.js";
@@ -13,12 +13,13 @@ import {
   googleWalletConfigured,
   buildGoogleWalletSaveUrl,
 } from "../lib/wallet-google.js";
+import { signResource, verifyResource, type ResourceKind } from "../lib/signed-url.js";
 import type { Employee, CompanySettings } from "./types.js";
 
 export const publicRouter = Router();
 
 const FIELDS = `id, slug, full_name, job_title, company, email, office_phone, mobile,
-  website, linkedin, notes, photo_url, disabled, view_count, created_at, updated_at`;
+  website, linkedin, notes, photo_url, address, disabled, view_count, created_at, updated_at`;
 
 async function loadActive(slug: string): Promise<Employee | null> {
   const rows = await query<Employee>(
@@ -33,13 +34,79 @@ function cardUrl(slug: string): string {
   return `${env.APP_ORIGIN.replace(/\/$/, "")}/card/${encodeURIComponent(slug)}`;
 }
 
-publicRouter.get("/cards/:slug", async (req, res) => {
+// Public DTO — drops internal fields (notes, id, view_count, timestamps, disabled).
+function toPublicCard(e: Employee) {
+  return {
+    slug: e.slug,
+    full_name: e.full_name,
+    job_title: e.job_title,
+    company: e.company,
+    email: e.email,
+    office_phone: e.office_phone,
+    mobile: e.mobile,
+    website: e.website,
+    linkedin: e.linkedin,
+    address: e.address,
+    photo_url: e.photo_url,
+  };
+}
+
+// ---- Anti-scraping helpers ----
+
+const BOT_UA = /(curl|wget|python-requests|httpie|go-http-client|libwww-perl|scrapy|java-http-client)/i;
+
+function looksLikeBrowser(req: Request): boolean {
+  const accept = (req.headers["accept"] as string | undefined)?.trim();
+  const ua = (req.headers["user-agent"] as string | undefined)?.trim();
+  if (!accept) return false;
+  if (!ua) return false;
+  if (BOT_UA.test(ua)) return false;
+  return true;
+}
+
+function noIndex(res: Response) {
+  res.setHeader("X-Robots-Tag", "noindex, nofollow");
+}
+
+function noStore(res: Response) {
+  res.setHeader("Cache-Control", "private, no-store");
+}
+
+function browserOnly(req: Request, res: Response, next: NextFunction) {
+  if (!looksLikeBrowser(req)) return res.status(403).send("Forbidden");
+  next();
+}
+
+function sameOriginReferer(req: Request): boolean {
+  const ref = req.headers["referer"] as string | undefined;
+  if (!ref) return true; // missing referer is allowed (privacy modes)
+  try {
+    return new URL(ref).origin === new URL(env.APP_ORIGIN).origin;
+  } catch {
+    return false;
+  }
+}
+
+// ---- Routes ----
+
+publicRouter.get("/cards/:slug", browserOnly, async (req, res) => {
+  noIndex(res);
+  noStore(res);
   const emp = await loadActive(req.params.slug);
-  if (!emp) return res.json({ employee: null, settings: null });
+  if (!emp) return res.json({ employee: null, settings: null, tokens: null });
   const settings = await query<CompanySettings>(
     "SELECT company_name, brand_color, logo_url FROM company_settings WHERE id = 1",
   );
-  res.json({ employee: emp, settings: settings[0] ?? null });
+  const tokens = {
+    vcard: signResource(emp.slug, "vcard"),
+    apple: signResource(emp.slug, "apple"),
+    google: signResource(emp.slug, "google"),
+  };
+  res.json({
+    employee: toPublicCard(emp),
+    settings: settings[0] ?? null,
+    tokens,
+  });
 });
 
 const EventSchema = z.object({
@@ -53,13 +120,27 @@ const EventSchema = z.object({
 publicRouter.post("/events", async (req, res) => {
   const parsed = EventSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ ok: false });
+  if (!sameOriginReferer(req)) return res.json({ ok: false });
   const emp = await loadActive(parsed.data.slug);
   if (!emp) return res.json({ ok: false });
   await insertEvent(emp.id, parsed.data.eventType === "scan" ? "qr_scan" : "view", req);
   res.json({ ok: true });
 });
 
-publicRouter.get("/vcard/:slug", async (req, res) => {
+function requireToken(kind: ResourceKind) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const exp = req.query.exp as string | undefined;
+    const sig = req.query.sig as string | undefined;
+    if (!verifyResource(req.params.slug, kind, exp, sig)) {
+      return res.status(403).send("Forbidden");
+    }
+    next();
+  };
+}
+
+publicRouter.get("/vcard/:slug", browserOnly, requireToken("vcard"), async (req, res) => {
+  noIndex(res);
+  noStore(res);
   const emp = await loadActive(req.params.slug);
   if (!emp) return res.status(404).send("Not found");
   await insertEvent(emp.id, "vcard_download", req);
@@ -73,6 +154,7 @@ publicRouter.get("/vcard/:slug", async (req, res) => {
 });
 
 publicRouter.get("/qr/:slug", async (req, res) => {
+  noIndex(res);
   const emp = await loadActive(req.params.slug);
   if (!emp) return res.status(404).send("Not found");
   const format = (req.query.format as string) === "svg" ? "svg" : "png";
@@ -91,9 +173,9 @@ publicRouter.get("/wallet-status", (_req, res) => {
   res.json({ apple: appleWalletConfigured, google: googleWalletConfigured });
 });
 
-
-
-publicRouter.get("/wallet/:slug", async (req, res) => {
+publicRouter.get("/wallet/:slug", browserOnly, requireToken("apple"), async (req, res) => {
+  noIndex(res);
+  noStore(res);
   if (!appleWalletConfigured) return res.status(501).send("Apple Wallet not configured");
   const emp = await loadActive(req.params.slug);
   if (!emp) return res.status(404).send("Not found");
@@ -109,7 +191,9 @@ publicRouter.get("/wallet/:slug", async (req, res) => {
   }
 });
 
-publicRouter.get("/google-wallet/:slug", async (req, res) => {
+publicRouter.get("/google-wallet/:slug", browserOnly, requireToken("google"), async (req, res) => {
+  noIndex(res);
+  noStore(res);
   if (!googleWalletConfigured) return res.status(501).send("Google Wallet not configured");
   const emp = await loadActive(req.params.slug);
   if (!emp) return res.status(404).send("Not found");

@@ -55,7 +55,7 @@ export const Route = createFileRoute("/card/$slug")({
               { name: "twitter:image", content: e.photo_url },
             ]
           : []),
-        ...(e.disabled ? [{ name: "robots", content: "noindex" }] : []),
+        { name: "robots", content: "noindex, nofollow" },
       ],
       links: [{ rel: "canonical", href: path }],
       scripts: [
@@ -67,8 +67,6 @@ export const Route = createFileRoute("/card/$slug")({
             name,
             jobTitle: e.job_title || undefined,
             worksFor: e.company ? { "@type": "Organization", name: e.company } : undefined,
-            email: e.email || undefined,
-            telephone: e.mobile || e.office_phone || undefined,
             url: e.website || undefined,
             image: e.photo_url || undefined,
             sameAs: e.linkedin ? [e.linkedin] : undefined,
@@ -94,7 +92,7 @@ export const Route = createFileRoute("/card/$slug")({
 });
 
 function CardPage() {
-  const { employee, settings } = Route.useLoaderData() as any;
+  const { employee, settings, tokens } = Route.useLoaderData() as any;
   const { src } = Route.useSearch();
   const e = employee;
   const [copied, setCopied] = useState(false);
@@ -129,7 +127,10 @@ function CardPage() {
   }
 
   const brand = settings?.brand_color || "#0f172a";
-  const vcfUrl = `/api/public/vcard/${encodeURIComponent(e.slug)}`;
+  const tokenQs = (t: { exp: number; sig: string }) => `?exp=${t.exp}&sig=${encodeURIComponent(t.sig)}`;
+  const vcfUrl = tokens
+    ? `/api/public/vcard/${encodeURIComponent(e.slug)}${tokenQs(tokens.vcard)}`
+    : `/api/public/vcard/${encodeURIComponent(e.slug)}`;
   const shareUrl = typeof window !== "undefined" ? window.location.href : "";
 
   const initials = e.full_name
@@ -184,7 +185,7 @@ function CardPage() {
                 <Download className="w-4 h-4" />
                 Save to Contacts (vCard)
               </a>
-              <WalletButtons slug={e.slug} brand={brand} />
+              <WalletButtons slug={e.slug} brand={brand} tokens={tokens} />
             </div>
 
             {/* Contact list */}
@@ -282,7 +283,18 @@ function ContactRow({
   );
 }
 
-function WalletButtons({ slug, brand }: { slug: string; brand: string }) {
+function WalletButtons({
+  slug,
+  brand,
+  tokens,
+}: {
+  slug: string;
+  brand: string;
+  tokens: {
+    apple: { exp: number; sig: string };
+    google: { exp: number; sig: string };
+  } | null;
+}) {
   const [available, setAvailable] = useState<{ apple: boolean; google: boolean } | null>(null);
   const [appleStatus, setAppleStatus] = useState<"idle" | "loading">("idle");
 
@@ -303,8 +315,10 @@ function WalletButtons({ slug, brand }: { slug: string; brand: string }) {
     );
   }
 
-  const appleUrl = `/api/public/wallet/${encodeURIComponent(slug)}`;
-  const googleUrl = `/api/public/google-wallet/${encodeURIComponent(slug)}`;
+  const tokenQs = (t: { exp: number; sig: string }) =>
+    `?exp=${t.exp}&sig=${encodeURIComponent(t.sig)}`;
+  const appleUrl = `/api/public/wallet/${encodeURIComponent(slug)}${tokens ? tokenQs(tokens.apple) : ""}`;
+  const googleUrl = `/api/public/google-wallet/${encodeURIComponent(slug)}${tokens ? tokenQs(tokens.google) : ""}`;
 
   const onAppleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
