@@ -197,7 +197,7 @@ export const api = {
   // --------- Analytics ---------
   recordEvent: (input: {
     slug: string;
-    eventType: "view" | "scan";
+    eventType: "view" | "scan" | "booking_click";
     source?: string | null;
     userAgent?: string | null;
     referrer?: string | null;
