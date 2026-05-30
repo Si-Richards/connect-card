@@ -13,14 +13,18 @@ function SettingsPage() {
 
   const [companyName, setCompanyName] = useState("");
   const [brandColor, setBrandColor] = useState("#3b82f6");
+  const [accentColor, setAccentColor] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
+  const [coverImageUrl, setCoverImageUrl] = useState("");
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (q.data?.settings) {
       setCompanyName(q.data.settings.company_name ?? "");
       setBrandColor(q.data.settings.brand_color ?? "#3b82f6");
+      setAccentColor(q.data.settings.accent_color ?? "");
       setLogoUrl(q.data.settings.logo_url ?? "");
+      setCoverImageUrl(q.data.settings.cover_image_url ?? "");
     }
   }, [q.data]);
 
@@ -29,7 +33,9 @@ function SettingsPage() {
       api.updateSettings({
         company_name: companyName || null,
         brand_color: brandColor || null,
+        accent_color: accentColor || null,
         logo_url: logoUrl || null,
+        cover_image_url: coverImageUrl || null,
       }),
     onSuccess: () => {
       setSavedMsg("Saved.");
@@ -38,9 +44,13 @@ function SettingsPage() {
     },
   });
 
-  const uploadM = useMutation({
+  const logoUpload = useMutation({
     mutationFn: (file: File) => api.uploadFile(file, "company-asset"),
     onSuccess: ({ url }) => setLogoUrl(url),
+  });
+  const coverUpload = useMutation({
+    mutationFn: (file: File) => api.uploadFile(file, "company-asset"),
+    onSuccess: ({ url }) => setCoverImageUrl(url),
   });
 
   if (q.isLoading) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
@@ -50,7 +60,7 @@ function SettingsPage() {
       <header>
         <h1 className="text-2xl font-semibold">Company settings</h1>
         <p className="text-sm text-muted-foreground">
-          Branding applied across all employee cards.
+          Branding applied across all employee cards. Each employee can override individual values.
         </p>
       </header>
 
@@ -73,23 +83,44 @@ function SettingsPage() {
           />
         </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Brand color</label>
-          <div className="flex items-center gap-3">
-            <input
-              type="color"
-              value={brandColor}
-              onChange={(e) => setBrandColor(e.target.value)}
-              className="h-10 w-14 rounded border border-input bg-background cursor-pointer"
-            />
-            <input
-              type="text"
-              value={brandColor}
-              onChange={(e) => setBrandColor(e.target.value)}
-              maxLength={32}
-              className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
-              placeholder="#3b82f6"
-            />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Brand color</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={brandColor || "#3b82f6"}
+                onChange={(e) => setBrandColor(e.target.value)}
+                className="h-10 w-14 rounded border border-input bg-background cursor-pointer"
+              />
+              <input
+                type="text"
+                value={brandColor}
+                onChange={(e) => setBrandColor(e.target.value)}
+                maxLength={16}
+                className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+                placeholder="#3b82f6"
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Accent color</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={accentColor || "#ffffff"}
+                onChange={(e) => setAccentColor(e.target.value)}
+                className="h-10 w-14 rounded border border-input bg-background cursor-pointer"
+              />
+              <input
+                type="text"
+                value={accentColor}
+                onChange={(e) => setAccentColor(e.target.value)}
+                maxLength={16}
+                className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+                placeholder="optional"
+              />
+            </div>
           </div>
         </div>
 
@@ -107,7 +138,7 @@ function SettingsPage() {
                 accept="image/png,image/jpeg,image/webp,image/gif"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
-                  if (f) uploadM.mutate(f);
+                  if (f) logoUpload.mutate(f);
                 }}
                 className="text-sm"
               />
@@ -118,8 +149,46 @@ function SettingsPage() {
                 placeholder="Or paste a URL"
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
               />
-              {uploadM.isPending && <p className="text-xs text-muted-foreground">Uploading…</p>}
-              {uploadM.isError && <p className="text-xs text-destructive">Upload failed.</p>}
+              {logoUpload.isPending && <p className="text-xs text-muted-foreground">Uploading…</p>}
+              {logoUpload.isError && <p className="text-xs text-destructive">Upload failed.</p>}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Cover image</label>
+          <p className="text-xs text-muted-foreground">
+            Shown as the hero banner on each card. Wide format recommended (e.g. 1200×400).
+          </p>
+          <div className="flex items-start gap-4">
+            {coverImageUrl ? (
+              <img
+                src={coverImageUrl}
+                alt="Cover"
+                className="h-20 w-40 rounded-md border border-border object-cover bg-background"
+              />
+            ) : (
+              <div className="h-20 w-40 rounded-md border border-dashed border-border bg-muted/30" />
+            )}
+            <div className="flex-1 space-y-2">
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) coverUpload.mutate(f);
+                }}
+                className="text-sm"
+              />
+              <input
+                type="text"
+                value={coverImageUrl}
+                onChange={(e) => setCoverImageUrl(e.target.value)}
+                placeholder="Or paste a URL"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+              />
+              {coverUpload.isPending && <p className="text-xs text-muted-foreground">Uploading…</p>}
+              {coverUpload.isError && <p className="text-xs text-destructive">Upload failed.</p>}
             </div>
           </div>
         </div>

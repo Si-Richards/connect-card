@@ -25,19 +25,36 @@ export function EmployeeForm({ mode }: { mode: Mode }) {
   const [form, setForm] = useState<any>({
     slug: "", full_name: "", job_title: "", company: "", email: "",
     office_phone: "", mobile: "", website: "", linkedin: "", notes: "",
-    photo_url: "", address: "", disabled: false,
+    photo_url: "", address: "",
+    brand_color: "", accent_color: "", logo_url: "", cover_image_url: "",
+    booking_url: "",
+    disabled: false,
   });
   const [slugTouched, setSlugTouched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [brandingOpen, setBrandingOpen] = useState(false);
 
   useEffect(() => {
     if (mode.kind === "edit") {
       fetchOne({ data: { id: mode.id } }).then((r) => {
         if (r.employee) {
-          setForm({ ...r.employee, photo_url: r.employee.photo_url ?? "" });
+          setForm({
+            ...r.employee,
+            photo_url: r.employee.photo_url ?? "",
+            brand_color: r.employee.brand_color ?? "",
+            accent_color: r.employee.accent_color ?? "",
+            logo_url: r.employee.logo_url ?? "",
+            cover_image_url: r.employee.cover_image_url ?? "",
+            booking_url: r.employee.booking_url ?? "",
+          });
           setSlugTouched(true);
+          if (r.employee.brand_color || r.employee.logo_url || r.employee.cover_image_url) {
+            setBrandingOpen(true);
+          }
         }
       });
     }
@@ -63,8 +80,23 @@ export function EmployeeForm({ mode }: { mode: Mode }) {
     }
   };
 
-  // If a photo_url got saved as an absolute same-origin /uploads URL by an
-  // older build, collapse it back to a relative path so validation passes.
+  const onUploadInto = async (
+    file: File,
+    field: "logo_url" | "cover_image_url",
+    setter: (b: boolean) => void,
+  ) => {
+    setter(true);
+    setError(null);
+    try {
+      const { url } = await api.uploadFile(file, "company-asset");
+      update(field, url);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setter(false);
+    }
+  };
+
   const normalizePhotoUrl = (v: string) => {
     const trimmed = (v ?? "").trim();
     if (!trimmed) return "";
@@ -93,7 +125,10 @@ export function EmployeeForm({ mode }: { mode: Mode }) {
       ...form,
       website: normalizeExternalUrl(form.website),
       linkedin: normalizeExternalUrl(form.linkedin),
+      booking_url: normalizeExternalUrl(form.booking_url),
       photo_url: normalizePhotoUrl(form.photo_url ?? ""),
+      logo_url: normalizePhotoUrl(form.logo_url ?? ""),
+      cover_image_url: normalizePhotoUrl(form.cover_image_url ?? ""),
     };
     const parsed = employeeInputSchema.safeParse(candidate);
     if (!parsed.success) {
@@ -159,6 +194,13 @@ export function EmployeeForm({ mode }: { mode: Mode }) {
           <Field label="Mobile" value={form.mobile} onChange={(v) => update("mobile", v)} />
           <Field label="Website" placeholder="www.example.com" value={form.website} onChange={(v) => update("website", v)} />
           <Field label="LinkedIn URL" placeholder="linkedin.com/in/name" value={form.linkedin} onChange={(v) => update("linkedin", v)} />
+          <Field
+            label="Booking link"
+            placeholder="https://cal.com/your-handle"
+            value={form.booking_url}
+            onChange={(v) => update("booking_url", v)}
+            hint="Calendly, Cal.com, SavvyCal, etc."
+          />
         </div>
         <div>
           <label className="text-sm font-medium">Address</label>
@@ -179,6 +221,47 @@ export function EmployeeForm({ mode }: { mode: Mode }) {
             rows={3}
           />
         </div>
+
+        {/* Branding overrides */}
+        <div className="rounded-md border border-border bg-card/40">
+          <button
+            type="button"
+            onClick={() => setBrandingOpen((v) => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium"
+          >
+            <span>Branding overrides {brandingOpen ? "" : "(optional)"}</span>
+            <span className="text-muted-foreground">{brandingOpen ? "–" : "+"}</span>
+          </button>
+          {brandingOpen && (
+            <div className="px-4 pb-4 space-y-4">
+              <p className="text-xs text-muted-foreground">
+                Leave blank to inherit from company settings.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <ColorField label="Brand color" value={form.brand_color} onChange={(v) => update("brand_color", v)} />
+                <ColorField label="Accent color" value={form.accent_color} onChange={(v) => update("accent_color", v)} />
+              </div>
+
+              <ImageField
+                label="Logo override"
+                value={form.logo_url}
+                onChange={(v) => update("logo_url", v)}
+                uploading={uploadingLogo}
+                onPick={(f) => onUploadInto(f, "logo_url", setUploadingLogo)}
+              />
+              <ImageField
+                label="Cover image override"
+                value={form.cover_image_url}
+                onChange={(v) => update("cover_image_url", v)}
+                uploading={uploadingCover}
+                onPick={(f) => onUploadInto(f, "cover_image_url", setUploadingCover)}
+                wide
+              />
+            </div>
+          )}
+        </div>
+
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -222,6 +305,81 @@ function Field({
         className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
       />
       {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
+    </div>
+  );
+}
+
+function ColorField({
+  label, value, onChange,
+}: { label: string; value: string; onChange: (v: string) => void }) {
+  const hasValue = !!value;
+  return (
+    <div>
+      <label className="text-sm font-medium">{label}</label>
+      <div className="mt-1 flex items-center gap-2">
+        <input
+          type="color"
+          value={hasValue ? value : "#000000"}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-10 w-12 rounded border border-input bg-background cursor-pointer"
+        />
+        <input
+          type="text"
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="inherit"
+          className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+        />
+        {hasValue && (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            clear
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ImageField({
+  label, value, onChange, uploading, onPick, wide,
+}: {
+  label: string; value: string; onChange: (v: string) => void;
+  uploading: boolean; onPick: (f: File) => void; wide?: boolean;
+}) {
+  return (
+    <div>
+      <label className="text-sm font-medium">{label}</label>
+      <div className="mt-1 flex items-center gap-3">
+        {value ? (
+          <img
+            src={value}
+            className={`${wide ? "w-32 h-16" : "w-14 h-14"} object-contain rounded border border-border bg-background`}
+            alt=""
+          />
+        ) : (
+          <div className={`${wide ? "w-32 h-16" : "w-14 h-14"} rounded border border-dashed border-border bg-muted/30`} />
+        )}
+        <div className="flex-1 space-y-2">
+          <input
+            type="file"
+            accept="image/*"
+            className="text-sm"
+            onChange={(e) => e.target.files?.[0] && onPick(e.target.files[0])}
+          />
+          <input
+            type="text"
+            value={value ?? ""}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="inherit company default"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+          />
+          {uploading && <p className="text-xs text-muted-foreground">Uploading…</p>}
+        </div>
+      </div>
     </div>
   );
 }
