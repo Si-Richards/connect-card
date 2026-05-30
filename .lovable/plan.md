@@ -1,51 +1,86 @@
-## Diagnosis
 
-The upload itself is likely succeeding, but the employee form is failing validation before save.
+Implement steps 1–6 of the scraping-mitigation review. No edge/CDN work (step 7) and no app-level rate limiting.
 
-The current code has two conflicting behaviours:
+## 1. Trim the public card payload
 
-- The self-hosted API returns uploaded files as a relative path: `/uploads/<file>`.
-- The frontend now converts that to an absolute URL before storing it, e.g. `https://your-domain.com/uploads/<file>`.
-- The employee form then validates the full form with `employeeInputSchema` on Save.
-- The visible message `Invalid url` is coming from Zod validation, most likely because the deployed self-hosted frontend is still using an older schema that requires `photo_url` to be a full `.url()`, or because a stale/invalid value remains in the hidden `photo_url` state.
+`selfhost/src/routes/public.ts` — in `GET /api/public/cards/:slug`, project the employee to a public DTO before responding:
 
-## Plan
+Keep: `slug`, `full_name`, `job_title`, `company`, `email`, `office_phone`, `mobile`, `website`, `linkedin`, `address`, `photo_url`.
+Drop: `notes`, `id`, `view_count`, `disabled`, `created_at`, `updated_at`.
 
-1. **Make upload URL handling deterministic**
-   - Change `api.uploadFile()` so it returns the exact server path (`/uploads/...`) for self-hosted uploads instead of converting it to an absolute URL.
-   - Keep absolute URLs untouched only when the backend explicitly returns one.
+(`/api/employees` admin routes stay unchanged — they keep returning the full row for the dashboard.)
 
-2. **Make employee photo validation match self-hosted storage**
-   - Keep accepting:
-     - empty string
-     - `null`
-     - `/uploads/...`
-     - `http://...` / `https://...`
-   - Improve the error message so it says the photo URL is invalid, not the generic `Invalid url`.
+## 2. Stop feeding harvesters via page metadata
 
-3. **Add a guard at save time**
-   - Before validating/saving, normalise `photo_url`:
-     - if empty, save as empty/null-compatible value
-     - if it is a same-origin `/uploads/...` URL that was previously converted to absolute, convert it back to `/uploads/...`
-   - This makes old uploaded values safe even if the form already contains an absolute self-host URL.
+`src/routes/card.$slug.tsx` `head()`:
 
-4. **Improve upload error visibility**
-   - If upload succeeds, clear any previous error immediately.
-   - If save validation fails, show the exact field-specific issue so the user can tell whether it is the photo, website, LinkedIn, etc.
+- Remove `email` and `telephone` from the JSON-LD object.
+- Always emit `{ name: "robots", content: "noindex, nofollow" }` for `/card/*` (drop the conditional that only sets it when disabled). Cards remain reachable by direct link / QR / wallet pass; they just don't get indexed.
 
-5. **Self-host deployment note**
-   - After implementation, rebuild and restart the self-hosted app so the browser is not running the old validation bundle:
+`selfhost/src/routes/public.ts` — set response header `X-Robots-Tag: noindex, nofollow` on:
+- `GET /api/public/cards/:slug`
+- `GET /api/public/vcard/:slug`
+- `GET /api/public/qr/:slug`
+- `GET /api/public/wallet/:slug`
+- `GET /api/public/google-wallet/:slug`
 
-```bash
-cd /opt/connect-card
-bun install
-bun run build
-sudo systemctl restart business-card
-sudo systemctl reload nginx
+## 3. Make new slugs unguessable
+
+`selfhost/src/routes/employees.ts` — in `POST /`, if the admin-supplied slug does not already end with a `-[a-z0-9]{6,}` suffix, append `-` plus 6 chars of `crypto.randomBytes(4).toString("base64url")` lowercased (strip non `[a-z0-9]`). Existing slugs are unaffected; old links keep working.
+
+No frontend changes required — the admin UI already shows the resulting slug after save.
+
+## 4. Cheap bot deterrents
+
+`selfhost/src/routes/public.ts`:
+
+- On `GET /api/public/cards/:slug`, `GET /api/public/vcard/:slug`, and `GET /api/public/wallet*/:slug`, set `Cache-Control: private, no-store`.
+- Add a small `looksLikeBrowser(req)` helper: returns `false` when both `Accept` is missing/empty AND `User-Agent` is missing or matches `/(curl|wget|python-requests|httpie|go-http-client|libwww-perl)/i`. When it returns `false`, respond `403`. Apply to the same three endpoints above. Real browsers always send `Accept`, so this won't affect users.
+- On `POST /api/public/events`, additionally drop (return `{ ok: false }` without inserting) when the `Referer` header is present but its origin doesn't match `env.APP_ORIGIN`. Missing Referer is allowed (privacy modes).
+
+## 5. Signed, short-lived URLs for vCard + wallet
+
+New helper `selfhost/src/lib/signed-url.ts`:
+- `signResource(slug, kind, ttlSec=600)` → returns `{ exp, sig }` where `sig = hmacSha256(SESSION_SECRET, ${kind}:${slug}:${exp}).slice(0,32)`.
+- `verifyResource(slug, kind, exp, sig)` → constant-time compare, reject if expired.
+
+`selfhost/src/routes/public.ts`:
+- In `GET /api/public/cards/:slug`, attach a `tokens` object to the response: `{ vcard: {exp, sig}, apple: {...}, google: {...} }` (each minted for its own kind).
+- In `GET /api/public/vcard/:slug`, `GET /api/public/wallet/:slug`, `GET /api/public/google-wallet/:slug`: require `?exp=&sig=` query params and verify with `verifyResource`. On failure return `403`. (`/qr/:slug` stays open — the QR encodes the public card URL, not contact data.)
+
+`src/lib/api.ts` — extend the `getEmployeeBySlug` response type with optional `tokens`.
+
+`src/routes/card.$slug.tsx`:
+- Build `vcfUrl`, `appleUrl`, `googleUrl` from `loaderData.tokens` (e.g. `/api/public/vcard/${slug}?exp=${t.exp}&sig=${t.sig}`).
+- Pass tokens into `<WalletButtons />` as props (replace the current hardcoded URLs).
+
+Tokens TTL = 10 min — long enough for the user to click Save, short enough to be useless for batch scraping.
+
+## 6. robots.txt
+
+Create `public/robots.txt`:
+
+```
+User-agent: *
+Disallow: /card/
+Disallow: /api/
+Allow: /
 ```
 
-## Files to change
+Keeps the marketing site (root + future pages) indexable while excluding the card pages and API by default.
 
-- `src/lib/api.ts`
-- `src/lib/employees.schema.ts`
-- `src/routes/_authenticated/admin.new.tsx`
+## Out of scope (per your call)
+
+- No nginx / Cloudflare rate limiting (step 7).
+- No app-level rate limiting.
+- No CAPTCHA on the card page.
+
+## Deploy
+
+After merging, on the VPS:
+
+```bash
+cd /opt/connect-card && bun install && bun run build
+cd /opt/connect-card/selfhost && npm install && npm run build
+sudo systemctl restart business-card
+```
