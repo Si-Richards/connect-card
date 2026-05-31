@@ -74,6 +74,13 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "employee_events_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       employees: {
@@ -180,7 +187,42 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      employees_public: {
+        Row: {
+          company: string | null
+          full_name: string | null
+          id: string | null
+          job_title: string | null
+          linkedin: string | null
+          photo_url: string | null
+          slug: string | null
+          view_count: number | null
+          website: string | null
+        }
+        Insert: {
+          company?: string | null
+          full_name?: string | null
+          id?: string | null
+          job_title?: string | null
+          linkedin?: string | null
+          photo_url?: string | null
+          slug?: string | null
+          view_count?: number | null
+          website?: string | null
+        }
+        Update: {
+          company?: string | null
+          full_name?: string | null
+          id?: string | null
+          job_title?: string | null
+          linkedin?: string | null
+          photo_url?: string | null
+          slug?: string | null
+          view_count?: number | null
+          website?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
