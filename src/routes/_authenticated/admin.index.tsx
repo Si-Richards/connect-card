@@ -78,7 +78,7 @@ function AdminList() {
               <tr><td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">No employees yet.</td></tr>
             )}
             {employees.map((e: any) => {
-              const cardUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/card/${e.slug}`;
+              const cardUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/c/${e.public_id}`;
               const t = (totals as any)[e.id] ?? { views: 0, scans: 0 };
               return (
                 <tr key={e.id} className="border-t border-border">
@@ -97,13 +97,13 @@ function AdminList() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 justify-end">
-                      <a href={`/card/${e.slug}`} target="_blank" rel="noreferrer" title="View" className="p-2 hover:bg-muted rounded">
+                      <a href={`/c/${e.public_id}`} target="_blank" rel="noreferrer" title="View" className="p-2 hover:bg-muted rounded">
                         <ExternalLink className="w-4 h-4" />
                       </a>
                       <button title="Copy link" onClick={() => navigator.clipboard.writeText(cardUrl)} className="p-2 hover:bg-muted rounded">
                         <Copy className="w-4 h-4" />
                       </button>
-                      <a title="Download QR (PNG)" href={`/api/public/qr/${e.slug}?format=png`} download={`${e.slug}-qr.png`} className="p-2 hover:bg-muted rounded">
+                      <a title="Download QR (PNG)" href={`/api/public/qr/${e.public_id}?format=png`} download={`${e.slug}-qr.png`} className="p-2 hover:bg-muted rounded">
                         <Download className="w-4 h-4" />
                       </a>
                       <button
