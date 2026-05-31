@@ -12,6 +12,7 @@
 export type Employee = {
   id: string;
   slug: string;
+  public_id: string;
   full_name: string;
   job_title: string | null;
   company: string | null;
@@ -140,16 +141,26 @@ export const api = {
   // --------- Employees ---------
   listEmployees: () => request<{ employees: Employee[] }>("/employees"),
   getEmployee: (id: string) => request<{ employee: Employee }>(`/employees/${id}`),
-  getEmployeeBySlug: (slug: string) =>
+  getCardByPublicId: (publicId: string) =>
     request<{
-      employee: Employee | null;
+      employee:
+        | (Omit<Employee, "id" | "slug" | "notes" | "brand_color" | "accent_color" | "logo_url" | "cover_image_url" | "disabled" | "view_count" | "created_at" | "updated_at"> & {
+            branding: {
+              company_name: string | null;
+              brand_color: string | null;
+              accent_color: string | null;
+              logo_url: string | null;
+              cover_image_url: string | null;
+            };
+          })
+        | null;
       settings: CompanySettings | null;
       tokens: {
         vcard: { exp: number; sig: string };
         apple: { exp: number; sig: string };
         google: { exp: number; sig: string };
       } | null;
-    }>(`/public/cards/${encodeURIComponent(slug)}`),
+    }>(`/public/c/${encodeURIComponent(publicId)}`),
   createEmployee: (values: Partial<Employee>) =>
     request<{ employee: Employee }>("/employees", {
       method: "POST",
@@ -196,7 +207,7 @@ export const api = {
 
   // --------- Analytics ---------
   recordEvent: (input: {
-    slug: string;
+    publicId: string;
     eventType: "view" | "scan" | "booking_click";
     source?: string | null;
     userAgent?: string | null;
@@ -210,4 +221,8 @@ export const api = {
     request<AnalyticsSummary>(`/analytics/summary?days=${days}`),
   getAnalytics: (id: string, days = 30) =>
     request<AnalyticsDetail>(`/analytics/employees/${id}?days=${days}`),
+  rotateEmployeePublicId: (id: string) =>
+    request<{ ok: true; public_id: string }>(`/employees/${id}/rotate-public-id`, {
+      method: "POST",
+    }),
 };

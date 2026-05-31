@@ -1,13 +1,11 @@
 /**
  * Client wrappers for analytics endpoints exposed by the self-hosted backend.
- * Same export names as the previous server-fn version so call sites are
- * unchanged.
  */
 import { api } from "./api";
 
 type RecordInput = {
   data: {
-    slug: string;
+    publicId: string;
     eventType: "view" | "scan" | "booking_click";
     source?: string | null;
     userAgent?: string | null;

@@ -13,69 +13,19 @@ const cardSearchSchema = z.object({
 export const Route = createFileRoute("/c/$publicId")({
   validateSearch: (s) => cardSearchSchema.parse(s),
   loader: async ({ params }) => {
-    const res = await api.getEmployeeBySlug(params.slug);
+    const res = await api.getCardByPublicId(params.publicId);
     if (!res.employee) throw notFound();
     return res;
   },
-  head: ({ loaderData, params }) => {
-    const e = loaderData?.employee;
-    const path = `/card/${params.slug}`;
-    if (!e) {
-      return {
-        meta: [
-          { title: "Card not found" },
-          { name: "robots", content: "noindex" },
-        ],
-        links: [{ rel: "canonical", href: path }],
-      };
-    }
-    const name = e.full_name;
-    const role = [e.job_title, e.company].filter(Boolean).join(" · ");
-    const title = role ? `${name} — ${role}` : name;
-    const desc = `Save ${name}'s contact details${e.company ? ` at ${e.company}` : ""} to your phone — vCard, Apple & Google Wallet supported.`;
-    const firstName = name.split(/\s+/)[0] ?? "";
-    const lastName = name.split(/\s+/).slice(1).join(" ");
-    return {
-      meta: [
-        { title },
-        { name: "description", content: desc },
-        { name: "author", content: name },
-        { property: "og:type", content: "profile" },
-        { property: "og:title", content: title },
-        { property: "og:description", content: desc },
-        { property: "og:url", content: path },
-        { property: "profile:first_name", content: firstName },
-        { property: "profile:last_name", content: lastName },
-        { name: "twitter:card", content: e.photo_url ? "summary_large_image" : "summary" },
-        { name: "twitter:title", content: title },
-        { name: "twitter:description", content: desc },
-        ...(e.photo_url
-          ? [
-              { property: "og:image", content: e.photo_url },
-              { property: "og:image:alt", content: `${name} profile photo` },
-              { name: "twitter:image", content: e.photo_url },
-            ]
-          : []),
-        { name: "robots", content: "noindex, nofollow" },
-      ],
-      links: [{ rel: "canonical", href: path }],
-      scripts: [
-        {
-          type: "application/ld+json",
-          children: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "Person",
-            name,
-            jobTitle: e.job_title || undefined,
-            worksFor: e.company ? { "@type": "Organization", name: e.company } : undefined,
-            url: e.website || undefined,
-            image: e.photo_url || undefined,
-            sameAs: e.linkedin ? [e.linkedin] : undefined,
-          }),
-        },
-      ],
-    };
-  },
+  // Cards are private capability URLs — never expose name/photo to crawlers
+  // or social previewers. Stops Slack/WhatsApp from leaking the card on share.
+  head: () => ({
+    meta: [
+      { title: "Contact card" },
+      { name: "robots", content: "noindex, nofollow, noarchive, nosnippet" },
+      { name: "referrer", content: "no-referrer" },
+    ],
+  }),
   component: CardPage,
   notFoundComponent: () => (
     <div className="min-h-screen flex items-center justify-center bg-background p-6">
@@ -99,11 +49,11 @@ function CardPage() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (!e || e.disabled) return;
+    if (!e) return;
     const isScan = src === "qr";
     recordEmployeeEvent({
       data: {
-        slug: e.slug,
+        publicId: e.public_id,
         eventType: isScan ? "scan" : "view",
         source: src ?? null,
         userAgent: navigator.userAgent.slice(0, 512),
@@ -111,21 +61,7 @@ function CardPage() {
       },
     }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [e?.slug, src]);
-
-
-  if (e.disabled) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-6">
-        <div className="text-center max-w-md">
-          <h1 className="text-2xl font-semibold">Card unavailable</h1>
-          <p className="text-muted-foreground mt-2">
-            This contact card has been taken offline.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  }, [e?.public_id, src]);
 
   const branding = e.branding ?? {};
   const brand = branding.brand_color || settings?.brand_color || "#0f172a";
@@ -135,8 +71,8 @@ function CardPage() {
   const companyName = branding.company_name || settings?.company_name;
   const tokenQs = (t: { exp: number; sig: string }) => `?exp=${t.exp}&sig=${encodeURIComponent(t.sig)}`;
   const vcfUrl = tokens
-    ? `/api/public/vcard/${encodeURIComponent(e.slug)}${tokenQs(tokens.vcard)}`
-    : `/api/public/vcard/${encodeURIComponent(e.slug)}`;
+    ? `/api/public/vcard/${encodeURIComponent(e.public_id)}${tokenQs(tokens.vcard)}`
+    : `/api/public/vcard/${encodeURIComponent(e.public_id)}`;
   const shareUrl = typeof window !== "undefined" ? window.location.href : "";
 
   const initials = e.full_name
@@ -149,7 +85,7 @@ function CardPage() {
   const onBookingClick = () => {
     recordEmployeeEvent({
       data: {
-        slug: e.slug,
+        publicId: e.public_id,
         eventType: "booking_click",
         source: null,
         userAgent: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 512) : null,
@@ -165,7 +101,6 @@ function CardPage() {
     >
       <div className="mx-auto max-w-md">
         <div className="bg-card rounded-3xl shadow-xl overflow-hidden border border-border">
-          {/* Header */}
           <div
             className="relative h-32 mb-4"
             style={
@@ -183,11 +118,8 @@ function CardPage() {
             )}
           </div>
 
-          {/* Photo */}
           <div className="flex flex-col items-center px-6 pb-6">
-            <div
-              className="w-32 h-32 rounded-full overflow-hidden ring-4 ring-card bg-muted flex items-center justify-center text-3xl font-semibold text-muted-foreground"
-            >
+            <div className="w-32 h-32 rounded-full overflow-hidden ring-4 ring-card bg-muted flex items-center justify-center text-3xl font-semibold text-muted-foreground">
               {e.photo_url ? (
                 <img src={e.photo_url} alt={e.full_name} className="w-full h-full object-cover" />
               ) : (
@@ -203,7 +135,6 @@ function CardPage() {
               <p className="text-sm text-muted-foreground/80 text-center">{e.company}</p>
             )}
 
-            {/* Actions */}
             <div className="w-full mt-6 grid grid-cols-1 gap-2">
               <a
                 href={vcfUrl}
@@ -226,10 +157,9 @@ function CardPage() {
                   Book a meeting
                 </a>
               )}
-              <WalletButtons slug={e.slug} brand={brand} tokens={tokens} />
+              <WalletButtons publicId={e.public_id} brand={brand} tokens={tokens} />
             </div>
 
-            {/* Contact list */}
             <div className="w-full mt-6 divide-y divide-border rounded-xl border border-border overflow-hidden">
               {e.email && (
                 <ContactRow href={`mailto:${e.email}`} icon={<Mail className="w-4 h-4" />} label="Email" value={e.email} />
@@ -256,11 +186,10 @@ function CardPage() {
               )}
             </div>
 
-            {/* QR + share */}
             <div className="w-full mt-6 flex flex-col items-center gap-3">
               <div className="bg-white p-3 rounded-xl border border-border">
                 <img
-                  src={`/api/public/qr/${encodeURIComponent(e.slug)}?format=png`}
+                  src={`/api/public/qr/${encodeURIComponent(e.public_id)}?format=png`}
                   alt="QR code"
                   className="w-64 h-64"
                 />
@@ -273,12 +202,10 @@ function CardPage() {
                       await navigator.clipboard.writeText(shareUrl);
                       setCopied(true);
                       setTimeout(() => setCopied(false), 1500);
-                    } catch {
-                      /* ignore */
-                    }
+                    } catch {}
                   }}
                   className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium border border-border bg-background hover:bg-muted transition-colors"
-                  aria-label="Copy public link"
+                  aria-label="Copy private link"
                 >
                   {copied ? <Check className="w-4 h-4" /> : <Link2 className="w-4 h-4" />}
                   {copied ? "Link copied!" : "Copy link"}
@@ -301,12 +228,8 @@ function CardPage() {
 
         {companyName && (
           <div className="flex items-center justify-center gap-2 mt-6 opacity-70">
-            {logo && (
-              <img src={logo} alt="" className="h-4 w-4 object-contain" />
-            )}
-            <p className="text-center text-xs text-muted-foreground">
-              {companyName}
-            </p>
+            {logo && <img src={logo} alt="" className="h-4 w-4 object-contain" />}
+            <p className="text-center text-xs text-muted-foreground">{companyName}</p>
           </div>
         )}
       </div>
@@ -331,11 +254,11 @@ function ContactRow({
 }
 
 function WalletButtons({
-  slug,
+  publicId,
   brand,
   tokens,
 }: {
-  slug: string;
+  publicId: string;
   brand: string;
   tokens: {
     apple: { exp: number; sig: string };
@@ -364,8 +287,8 @@ function WalletButtons({
 
   const tokenQs = (t: { exp: number; sig: string }) =>
     `?exp=${t.exp}&sig=${encodeURIComponent(t.sig)}`;
-  const appleUrl = `/api/public/wallet/${encodeURIComponent(slug)}${tokens ? tokenQs(tokens.apple) : ""}`;
-  const googleUrl = `/api/public/google-wallet/${encodeURIComponent(slug)}${tokens ? tokenQs(tokens.google) : ""}`;
+  const appleUrl = `/api/public/wallet/${encodeURIComponent(publicId)}${tokens ? tokenQs(tokens.apple) : ""}`;
+  const googleUrl = `/api/public/google-wallet/${encodeURIComponent(publicId)}${tokens ? tokenQs(tokens.google) : ""}`;
 
   const onAppleClick = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -380,7 +303,7 @@ function WalletButtons({
       const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = objectUrl;
-      a.download = `${slug}.pkpass`;
+      a.download = `${publicId}.pkpass`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -416,4 +339,3 @@ function WalletButtons({
     </>
   );
 }
-
