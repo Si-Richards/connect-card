@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 
 // Legacy slug-based card URL is retired for privacy (was enumerable).
 // All public access is now via /c/:publicId (128-bit unguessable ID).
