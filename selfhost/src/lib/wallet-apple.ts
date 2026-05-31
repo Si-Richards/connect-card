@@ -15,13 +15,27 @@ function hexToRgb(hex: string | null | undefined, fallback: string): string {
   return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
 }
 
-async function loadLocalImage(url: string | null | undefined, size: number): Promise<Buffer | null> {
+async function loadLocalImage(
+  url: string | null | undefined,
+  size: number,
+  options: { circle?: boolean } = {},
+): Promise<Buffer | null> {
   if (!url) return null;
   try {
     const u = new URL(url, env.APP_ORIGIN);
     if (u.pathname.startsWith("/uploads/")) {
       const file = path.join(env.UPLOAD_DIR, path.basename(u.pathname));
-      return await sharp(await fs.readFile(file)).resize(size, size, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 0 } }).png().toBuffer();
+      let img = sharp(await fs.readFile(file)).resize(size, size, {
+        fit: options.circle ? "cover" : "contain",
+        background: { r: 255, g: 255, b: 255, alpha: 0 },
+      });
+      if (options.circle) {
+        const mask = Buffer.from(
+          `<svg width="${size}" height="${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="#fff"/></svg>`,
+        );
+        img = img.composite([{ input: mask, blend: "dest-in" }]);
+      }
+      return await img.png().toBuffer();
     }
   } catch {
     return null;
@@ -118,10 +132,11 @@ function createPassJson(e: Employee, cardUrl: string, branding: Branding): Buffe
       logoText: branding.company_name ?? e.company ?? "",
       generic: {
         headerFields: [],
-        secondaryFields: [{ key: "name", label: "Name", value: e.full_name }],
-        auxiliaryFields: e.job_title
+        primaryFields: [{ key: "name", label: "Name", value: e.full_name }],
+        secondaryFields: e.job_title
           ? [{ key: "position", label: "Position", value: e.job_title }]
           : [],
+        auxiliaryFields: [],
         backFields: [
           ...(e.office_phone ? [{ key: "office", label: "Office", value: e.office_phone }] : []),
           ...(e.mobile ? [{ key: "mobile", label: "Mobile", value: e.mobile }] : []),
@@ -155,8 +170,8 @@ export async function buildApplePass(e: Employee, cardUrl: string, branding: Bra
 
   const certificates = loadPemMaterial();
   const { PKPass } = await import("passkit-generator");
-  const photo = await loadLocalImage(e.photo_url, 180);
-  const photo2x = await loadLocalImage(e.photo_url, 360);
+  const photo = await loadLocalImage(e.photo_url, 180, { circle: true });
+  const photo2x = await loadLocalImage(e.photo_url, 360, { circle: true });
   const logo = await loadLocalImage(branding.logo_url, 80);
   const logo2x = await loadLocalImage(branding.logo_url, 160);
   const pass = new PKPass(
