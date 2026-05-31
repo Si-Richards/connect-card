@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { Eye, QrCode, Download, Wallet, FileImage, FileCode2, Link2, Check } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Eye, QrCode, Download, Wallet, FileImage, FileCode2, Link2, Check, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { EmployeeForm } from "./admin.new";
 import { getEmployeeAnalytics } from "@/lib/analytics.functions";
 import { getEmployee } from "@/lib/employees.functions";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/$id")({
   component: EditPage,
@@ -30,7 +32,16 @@ function QrPanel({ id }: { id: string }) {
     queryKey: ["employee", id],
     queryFn: () => getEmployee({ data: { id } }),
   });
+  const qc = useQueryClient();
   const [copied, setCopied] = useState(false);
+  const rotate = useMutation({
+    mutationFn: () => api.rotateEmployeePublicId(id),
+    onSuccess: () => {
+      toast.success("New link issued. Old QR and URL no longer work.");
+      qc.invalidateQueries({ queryKey: ["employee", id] });
+    },
+    onError: (err: any) => toast.error(err?.message ?? "Failed to rotate link"),
+  });
 
   if (q.isLoading) return null;
   if (q.isError || !q.data?.employee) return null;
@@ -101,6 +112,19 @@ function QrPanel({ id }: { id: string }) {
               <Link2 className="w-3.5 h-3.5" />
               Open card
             </a>
+            <button
+              type="button"
+              disabled={rotate.isPending}
+              onClick={() => {
+                if (window.confirm("Revoke this card's link? The old URL and any printed QR will stop working immediately. A new QR will be generated.")) {
+                  rotate.mutate();
+                }
+              }}
+              className="inline-flex items-center gap-1.5 rounded-md border border-destructive/40 bg-background px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${rotate.isPending ? "animate-spin" : ""}`} />
+              {rotate.isPending ? "Revoking…" : "Revoke & reissue"}
+            </button>
           </div>
         </div>
       </div>
