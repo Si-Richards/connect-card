@@ -130,6 +130,8 @@ function createPassJson(e: Employee, cardUrl: string, branding: Branding): Buffe
       foregroundColor: "rgb(255, 255, 255)",
       labelColor: "rgb(255, 255, 255)",
       logoText: branding.company_name ?? e.company ?? "",
+      generic: {
+        headerFields: [],
         primaryFields: [{ key: "name", label: "Name", value: e.full_name }],
         secondaryFields: e.job_title
           ? [{ key: "position", label: "Position", value: e.job_title }]
