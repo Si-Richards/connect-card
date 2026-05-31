@@ -164,3 +164,11 @@ employeesRouter.delete("/:id", async (req, res) => {
   await exec("DELETE FROM employees WHERE id = ?", [req.params.id]);
   res.json({ ok: true });
 });
+
+// Rotate a card's public_id — invalidates the old /c/:publicId URL and any
+// printed QR codes that encoded it. Use sparingly.
+employeesRouter.post("/:id/rotate-public-id", async (req, res) => {
+  const newId = newPublicId();
+  await exec("UPDATE employees SET public_id = ? WHERE id = ?", [newId, req.params.id]);
+  res.json({ ok: true, public_id: newId });
+});
