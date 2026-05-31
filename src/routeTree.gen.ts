@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CardSlugRouteImport } from './routes/card.$slug'
+import { Route as CPublicIdRouteImport } from './routes/c.$publicId'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminNewRouteImport } from './routes/_authenticated/admin.new'
@@ -36,6 +37,11 @@ const IndexRoute = IndexRouteImport.update({
 const CardSlugRoute = CardSlugRouteImport.update({
   id: '/card/$slug',
   path: '/card/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CPublicIdRoute = CPublicIdRouteImport.update({
+  id: '/c/$publicId',
+  path: '/c/$publicId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
@@ -69,6 +75,7 @@ const AuthenticatedAdminIdRoute = AuthenticatedAdminIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/c/$publicId': typeof CPublicIdRoute
   '/card/$slug': typeof CardSlugRoute
   '/admin/$id': typeof AuthenticatedAdminIdRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
@@ -79,6 +86,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/c/$publicId': typeof CPublicIdRoute
   '/card/$slug': typeof CardSlugRoute
   '/admin/$id': typeof AuthenticatedAdminIdRoute
   '/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
@@ -91,6 +99,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/login': typeof LoginRoute
+  '/c/$publicId': typeof CPublicIdRoute
   '/card/$slug': typeof CardSlugRoute
   '/_authenticated/admin/$id': typeof AuthenticatedAdminIdRoute
   '/_authenticated/admin/analytics': typeof AuthenticatedAdminAnalyticsRoute
@@ -103,6 +112,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/c/$publicId'
     | '/card/$slug'
     | '/admin/$id'
     | '/admin/analytics'
@@ -113,6 +123,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/c/$publicId'
     | '/card/$slug'
     | '/admin/$id'
     | '/admin/analytics'
@@ -124,6 +135,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/login'
+    | '/c/$publicId'
     | '/card/$slug'
     | '/_authenticated/admin/$id'
     | '/_authenticated/admin/analytics'
@@ -136,6 +148,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   LoginRoute: typeof LoginRoute
+  CPublicIdRoute: typeof CPublicIdRoute
   CardSlugRoute: typeof CardSlugRoute
 }
 
@@ -167,6 +180,13 @@ declare module '@tanstack/react-router' {
       path: '/card/$slug'
       fullPath: '/card/$slug'
       preLoaderRoute: typeof CardSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/c/$publicId': {
+      id: '/c/$publicId'
+      path: '/c/$publicId'
+      fullPath: '/c/$publicId'
+      preLoaderRoute: typeof CPublicIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/': {
@@ -230,6 +250,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   LoginRoute: LoginRoute,
+  CPublicIdRoute: CPublicIdRoute,
   CardSlugRoute: CardSlugRoute,
 }
 export const routeTree = rootRouteImport

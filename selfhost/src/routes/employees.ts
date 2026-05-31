@@ -54,10 +54,20 @@ const EmployeeSchema = z.object({
   disabled: z.boolean().optional(),
 });
 
-const FIELDS = `id, slug, full_name, job_title, company, email, office_phone, mobile,
+const FIELDS = `id, slug, public_id, full_name, job_title, company, email, office_phone, mobile,
   website, linkedin, notes, photo_url, address,
   brand_color, accent_color, logo_url, cover_image_url, booking_url,
   disabled, view_count, created_at, updated_at`;
+
+function newPublicId(): string {
+  // 16 random bytes → 22-char url-safe lowercase string. Unguessable.
+  return crypto
+    .randomBytes(16)
+    .toString("base64url")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+    .slice(0, 22);
+}
 
 function normalize(e: Employee): Employee {
   return { ...e, disabled: !!e.disabled };
@@ -86,14 +96,15 @@ employeesRouter.post("/", async (req, res) => {
   try {
     await exec(
       `INSERT INTO employees
-       (id, slug, full_name, job_title, company, email, office_phone, mobile,
+       (id, slug, public_id, full_name, job_title, company, email, office_phone, mobile,
         website, linkedin, notes, photo_url, address,
         brand_color, accent_color, logo_url, cover_image_url, booking_url,
         disabled, created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         id,
         randomizeSlug(v.slug),
+        newPublicId(),
         v.full_name,
         v.job_title ?? null,
         v.company ?? null,
@@ -152,4 +163,12 @@ employeesRouter.patch("/:id", async (req, res) => {
 employeesRouter.delete("/:id", async (req, res) => {
   await exec("DELETE FROM employees WHERE id = ?", [req.params.id]);
   res.json({ ok: true });
+});
+
+// Rotate a card's public_id — invalidates the old /c/:publicId URL and any
+// printed QR codes that encoded it. Use sparingly.
+employeesRouter.post("/:id/rotate-public-id", async (req, res) => {
+  const newId = newPublicId();
+  await exec("UPDATE employees SET public_id = ? WHERE id = ?", [newId, req.params.id]);
+  res.json({ ok: true, public_id: newId });
 });

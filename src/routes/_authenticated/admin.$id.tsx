@@ -36,9 +36,9 @@ function QrPanel({ id }: { id: string }) {
   if (q.isError || !q.data?.employee) return null;
   const e = q.data.employee;
   const cardUrl = typeof window !== "undefined"
-    ? `${window.location.origin}/card/${e.slug}`
-    : `/card/${e.slug}`;
-  const qrBase = `/api/public/qr/${encodeURIComponent(e.slug)}`;
+    ? `${window.location.origin}/c/${e.public_id}`
+    : `/c/${e.public_id}`;
+  const qrBase = `/api/public/qr/${encodeURIComponent(e.public_id)}`;
 
   return (
     <section className="rounded-lg border border-border p-5 bg-card">
