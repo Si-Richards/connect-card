@@ -1,6 +1,7 @@
 export type Employee = {
   id: string;
   slug: string;
+  public_id: string;
   full_name: string;
   job_title: string | null;
   company: string | null;
