@@ -58,8 +58,8 @@ analyticsRouter.get("/summary", async (req, res) => {
 
 analyticsRouter.get("/employees/:id", async (req, res) => {
   const days = DaysSchema.parse(req.query.days);
-  const emp = await query<{ id: string; full_name: string; slug: string }>(
-    "SELECT id, full_name, slug FROM employees WHERE id = ?",
+  const emp = await query<{ id: string; full_name: string; slug: string; public_id: string }>(
+    "SELECT id, full_name, slug, public_id FROM employees WHERE id = ?",
     [req.params.id],
   );
   if (!emp[0]) return res.status(404).json({ error: "Not found" });

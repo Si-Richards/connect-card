@@ -69,7 +69,7 @@ export type AnalyticsSummary = {
 };
 
 export type AnalyticsDetail = {
-  employee: { id: string; full_name: string; slug: string };
+  employee: { id: string; full_name: string; slug: string; public_id: string };
   since: string;
   days: number;
   totals: EventBucket;

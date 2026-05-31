@@ -251,7 +251,7 @@ function AnalyticsPage() {
             </h2>
             {detailQ.data && (
               <a
-                href={`/card/${detailQ.data.employee.slug}`}
+                href={`/c/${detailQ.data.employee.public_id}`}
                 target="_blank"
                 rel="noreferrer"
                 className="text-xs text-muted-foreground hover:text-foreground underline"
