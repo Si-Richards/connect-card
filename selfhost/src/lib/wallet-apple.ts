@@ -15,13 +15,27 @@ function hexToRgb(hex: string | null | undefined, fallback: string): string {
   return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
 }
 
-async function loadLocalImage(url: string | null | undefined, size: number): Promise<Buffer | null> {
+async function loadLocalImage(
+  url: string | null | undefined,
+  size: number,
+  options: { circle?: boolean } = {},
+): Promise<Buffer | null> {
   if (!url) return null;
   try {
     const u = new URL(url, env.APP_ORIGIN);
     if (u.pathname.startsWith("/uploads/")) {
       const file = path.join(env.UPLOAD_DIR, path.basename(u.pathname));
-      return await sharp(await fs.readFile(file)).resize(size, size, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 0 } }).png().toBuffer();
+      let img = sharp(await fs.readFile(file)).resize(size, size, {
+        fit: options.circle ? "cover" : "contain",
+        background: { r: 255, g: 255, b: 255, alpha: 0 },
+      });
+      if (options.circle) {
+        const mask = Buffer.from(
+          `<svg width="${size}" height="${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="#fff"/></svg>`,
+        );
+        img = img.composite([{ input: mask, blend: "dest-in" }]);
+      }
+      return await img.png().toBuffer();
     }
   } catch {
     return null;
