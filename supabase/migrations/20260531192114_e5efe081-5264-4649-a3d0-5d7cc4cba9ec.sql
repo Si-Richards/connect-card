@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.increment_employee_views(text) FROM PUBLIC, anon, authenticated;
