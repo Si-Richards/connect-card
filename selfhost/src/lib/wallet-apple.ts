@@ -170,8 +170,8 @@ export async function buildApplePass(e: Employee, cardUrl: string, branding: Bra
 
   const certificates = loadPemMaterial();
   const { PKPass } = await import("passkit-generator");
-  const photo = await loadLocalImage(e.photo_url, 180);
-  const photo2x = await loadLocalImage(e.photo_url, 360);
+  const photo = await loadLocalImage(e.photo_url, 180, { circle: true });
+  const photo2x = await loadLocalImage(e.photo_url, 360, { circle: true });
   const logo = await loadLocalImage(branding.logo_url, 80);
   const logo2x = await loadLocalImage(branding.logo_url, 160);
   const pass = new PKPass(
