@@ -112,6 +112,19 @@ function QrPanel({ id }: { id: string }) {
               <Link2 className="w-3.5 h-3.5" />
               Open card
             </a>
+            <button
+              type="button"
+              disabled={rotate.isPending}
+              onClick={() => {
+                if (window.confirm("Revoke this card's link? The old URL and any printed QR will stop working immediately. A new QR will be generated.")) {
+                  rotate.mutate();
+                }
+              }}
+              className="inline-flex items-center gap-1.5 rounded-md border border-destructive/40 bg-background px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${rotate.isPending ? "animate-spin" : ""}`} />
+              {rotate.isPending ? "Revoking…" : "Revoke & reissue"}
+            </button>
           </div>
         </div>
       </div>
