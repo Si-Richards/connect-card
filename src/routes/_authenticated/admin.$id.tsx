@@ -32,7 +32,16 @@ function QrPanel({ id }: { id: string }) {
     queryKey: ["employee", id],
     queryFn: () => getEmployee({ data: { id } }),
   });
+  const qc = useQueryClient();
   const [copied, setCopied] = useState(false);
+  const rotate = useMutation({
+    mutationFn: () => api.rotateEmployeePublicId(id),
+    onSuccess: () => {
+      toast.success("New link issued. Old QR and URL no longer work.");
+      qc.invalidateQueries({ queryKey: ["employee", id] });
+    },
+    onError: (err: any) => toast.error(err?.message ?? "Failed to rotate link"),
+  });
 
   if (q.isLoading) return null;
   if (q.isError || !q.data?.employee) return null;
