@@ -22,11 +22,16 @@ function randomizeSlug(slug: string): string {
 }
 
 const hex = z
-  .string()
-  .trim()
-  .regex(/^#[0-9a-fA-F]{3,8}$/)
-  .nullable()
-  .optional();
+  .preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? null : v),
+    z.string().trim().regex(/^#[0-9a-fA-F]{3,8}$/).nullable().optional(),
+  );
+
+const emptyToNull = (max: number) =>
+  z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? null : v),
+    z.string().trim().max(max).nullable().optional(),
+  );
 
 const EmployeeSchema = z.object({
   slug: z
