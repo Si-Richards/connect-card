@@ -1,58 +1,33 @@
-## Goal
+## Decision
 
-Make employee cards unguessable. Anyone with the link (from a QR scan or shared by the cardholder) sees the card; nobody can enumerate cards by typing names into the URL bar.
+No redirect from `/card/:slug` to `/c/:publicId`. The slug-resolver endpoint I proposed earlier is dropped — that would have leaked enumeration. The capability link lives in the admin only.
 
-## How it works
+## What changes
 
-Today: `/card/rick-deckard` — guessable, scrapeable by slug.
-After:  `/c/8fK2_aQ7vP9xL3nR` — 128 bits of entropy, unguessable.
+### 1. Leave `/card/:slug` as a dead end
+- `src/routes/card.$slug.tsx` keeps its current "This link has moved" notice (noindex, no fetch, no redirect).
+- `selfhost/src/routes/public.ts` keeps the `GET /api/public/cards/:slug` → 404 stub. No slug→public_id lookup is added.
 
-The QR encodes the new opaque URL. The QR stays stable forever (no reprints). The cardholder's human-readable slug is kept internally for admin URLs (`/admin/employees/rick-deckard`) but is never exposed on the public card route.
+### 2. Make the `/c/:publicId` link first-class in admin
+The admin employee detail page already shows the link, QR, copy button, open-card button, and revoke/reissue. Two small additions so admins can always find and share the link:
 
-## Changes
+- **Admin list (`src/routes/_authenticated/admin.index.tsx`)**: add a small monospace "Link" column showing `/c/<public_id>` (truncated) next to the existing Slug column, with the existing Copy/Open/Download QR actions unchanged. This way admins see the real public URL at a glance, not just the internal slug.
+- **Admin detail (`src/routes/_authenticated/admin.$id.tsx`)**: no functional change — the QR panel already shows the full URL, copy, open, download PNG/SVG, and revoke. Just relabel the section header from "QR code & public link" to "Public card link & QR" so it reads as the canonical place to grab the URL.
 
-### 1. Database
-- Add `public_id TEXT UNIQUE NOT NULL DEFAULT (encode(gen_random_bytes(12), 'base64'))` to `employees` (Lovable Cloud) and to the self-host MySQL schema.
-- Backfill existing rows with random IDs.
-- Keep `slug` for admin/internal use.
+### 3. No backend changes
+- No new endpoint.
+- No DB migration.
+- Wallet/vCard signing already keys off `public_id`.
 
-### 2. Public API (selfhost + Cloud)
-- New route: `GET /api/public/cards/by-public-id/:publicId` — the only public read path.
-- Deprecate `GET /api/public/cards/:slug` (return 404 to kill the enumeration vector). Admin reads keep using authenticated routes.
-- Wallet/vCard signing tokens key off `public_id` instead of `slug`.
+## What this preserves
 
-### 3. Frontend
-- New route file `src/routes/c.$publicId.tsx` renders the card.
-- Old `/card/:slug` route returns a not-found page (or 301 to the admin if logged-in).
-- `<head>` keeps `noindex, nofollow` and adds an empty `og:` block so accidental shares to Slack/WhatsApp don't preview the card.
-
-### 4. QR generation
-- `qr-code.ts` (or wherever the QR PNG is built) generates the QR from `https://{APP_ORIGIN}/c/{public_id}`.
-- Existing QRs that encoded `/card/:slug` stop working. A one-time admin action ("Regenerate QR codes for all employees") downloads a zip of new PNGs.
-
-### 5. Defense in depth (kept from today)
-- `X-Robots-Tag: noindex, nofollow` on the card response.
-- `Cache-Control: private, no-store`.
-- Bot user-agent block.
-- Rate-limit `/api/public/cards/by-public-id/:publicId` to ~30 req/min/IP to make brute-forcing the 128-bit ID space pointless in practice as well as in theory.
-
-## What this does NOT do
-
-- Anyone the cardholder forwards the URL to can still view it (that's the point of a business card).
-- It does not log who viewed; we can add view audit later if you want.
-- Existing printed QR codes need to be reprinted once. After that, never again.
+- Typing `/card/<anyone>` reveals nothing — no redirect, no 200, no slug-to-id oracle.
+- The only way to reach a card is the unguessable `/c/:publicId` link, distributed via QR or by an admin copying it from the backend.
+- Revoke & reissue still rotates `public_id` and invalidates old QRs/links.
 
 ## Files touched
 
-- `supabase/migrations/{ts}_employees_public_id.sql` — add column + backfill + index.
-- `selfhost/migrations/{ts}_employees_public_id.sql` — same for MySQL.
-- `selfhost/src/routes/public.ts` — new `by-public-id` handler, retire `:slug` handler.
-- `selfhost/src/lib/wallet-apple.ts`, `wallet-google.ts`, `vcard.ts` — switch lookup key.
-- `selfhost/src/lib/qr.ts` — new URL shape.
-- `src/routes/c.$publicId.tsx` — new public card page.
-- `src/routes/card.$slug.tsx` — delete or redirect.
-- Admin employee detail page — show the new `/c/...` URL and a "copy link / download QR" button.
+- `src/routes/_authenticated/admin.index.tsx` — add Link column.
+- `src/routes/_authenticated/admin.$id.tsx` — rename section header only.
 
-## Open question
-
-Do you want me to also add a **view audit log** (timestamp + coarse IP / UA per view) so you can see when a card was opened? Not required for privacy, but pairs naturally with this change. I can include it or leave it out.
+Nothing else.
