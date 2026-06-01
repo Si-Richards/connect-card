@@ -54,7 +54,7 @@ function QrPanel({ id }: { id: string }) {
   return (
     <section className="rounded-lg border border-border p-5 bg-card">
       <header className="mb-4">
-        <h2 className="text-lg font-semibold">QR code &amp; public link</h2>
+        <h2 className="text-lg font-semibold">Public card link &amp; QR</h2>
         <p className="text-xs text-muted-foreground mt-0.5">
           Print the QR or share the link. Scans are tracked automatically.
         </p>

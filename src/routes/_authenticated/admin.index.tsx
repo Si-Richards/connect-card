@@ -63,6 +63,7 @@ function AdminList() {
             <tr>
               <th className="px-4 py-2 font-medium">Name</th>
               <th className="px-4 py-2 font-medium">Slug</th>
+              <th className="px-4 py-2 font-medium">Public link</th>
               <th className="px-4 py-2 font-medium" title="All-time card views">Views</th>
               <th className="px-4 py-2 font-medium" title="Last 30 days">30d views</th>
               <th className="px-4 py-2 font-medium" title="QR scans, last 30 days">30d scans</th>
@@ -87,6 +88,9 @@ function AdminList() {
                     <div className="text-xs text-muted-foreground">{e.job_title} {e.company && `· ${e.company}`}</div>
                   </td>
                   <td className="px-4 py-3 font-mono text-xs">{e.slug}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground max-w-[14rem] truncate" title={cardUrl}>
+                    /c/{e.public_id}
+                  </td>
                   <td className="px-4 py-3">{e.view_count}</td>
                   <td className="px-4 py-3 tabular-nums">{t.views}</td>
                   <td className="px-4 py-3 tabular-nums">{t.scans}</td>
