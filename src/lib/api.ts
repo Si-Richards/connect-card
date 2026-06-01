@@ -107,10 +107,12 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      "Accept": "application/json",
       ...(init.headers || {}),
     },
     ...init,
   });
+
   if (res.status === 401 && typeof window !== "undefined") {
     const here = window.location.pathname + window.location.search;
     if (!window.location.pathname.startsWith("/login")) {
