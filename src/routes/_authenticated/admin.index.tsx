@@ -73,10 +73,10 @@ function AdminList() {
           </thead>
           <tbody>
             {q.isLoading && (
-              <tr><td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">Loading…</td></tr>
+              <tr><td colSpan={8} className="px-4 py-6 text-center text-muted-foreground">Loading…</td></tr>
             )}
             {!q.isLoading && employees.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">No employees yet.</td></tr>
+              <tr><td colSpan={8} className="px-4 py-6 text-center text-muted-foreground">No employees yet.</td></tr>
             )}
             {employees.map((e: any) => {
               const cardUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/c/${e.public_id}`;
