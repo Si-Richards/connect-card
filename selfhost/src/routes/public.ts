@@ -128,8 +128,11 @@ publicRouter.get("/cards/:slug", (_req, res) => {
 });
 
 // ---- Card lookup by public_id ----
+// Note: no `browserOnly` here. The 22-char public_id is unguessable (≈110 bits)
+// and the route is hit from SSR loaders (TanStack Start) which don't always
+// look browser-ish. rateLimitLookup is enough to keep things noisy.
 
-publicRouter.get("/c/:publicId", browserOnly, rateLimitLookup, async (req, res) => {
+publicRouter.get("/c/:publicId", rateLimitLookup, async (req, res) => {
   noIndex(res);
   noStore(res);
   const emp = await loadActiveByPublicId(req.params.publicId);
@@ -147,6 +150,7 @@ publicRouter.get("/c/:publicId", browserOnly, rateLimitLookup, async (req, res) 
     tokens,
   });
 });
+
 
 const EventSchema = z.object({
   publicId: z.string().min(1).max(64),
