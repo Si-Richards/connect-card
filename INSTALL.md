@@ -80,6 +80,17 @@ GOOGLE_WALLET_CLASS_ID=...
 GOOGLE_WALLET_SERVICE_ACCOUNT_JSON_BASE64=...
 ```
 
+**Google Wallet — create the class once per environment.** After setting the
+three `GOOGLE_WALLET_*` vars, register the GenericClass with Google so that
+"Add to Google Wallet" works (otherwise it fails with "something went wrong"):
+
+```bash
+cd /opt/connect-card/selfhost
+sudo -u bcuser npm run wallet:create-google-class
+```
+
+The script is idempotent — re-running it is a no-op if the class already exists.
+
 ```bash
 sudo mkdir -p /var/lib/business-card/uploads
 sudo chown -R www-data:www-data /var/lib/business-card
