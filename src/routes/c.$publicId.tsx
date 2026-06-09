@@ -157,7 +157,7 @@ function CardPage() {
                   Book a meeting
                 </a>
               )}
-              <WalletButtons publicId={e.public_id} brand={brand} tokens={tokens} />
+              <WalletButtons publicId={e.public_id} fullName={e.full_name} brand={brand} tokens={tokens} />
             </div>
 
             <div className="w-full mt-6 divide-y divide-border rounded-xl border border-border overflow-hidden">
