@@ -15,13 +15,13 @@ authenticator.options = { window: 1, step: 30, digits: 6 };
 
 // ---------- AES-256-GCM secret-at-rest ----------
 function aesKey(): Buffer {
-  return crypto.hkdfSync(
+  return Buffer.from(crypto.hkdfSync(
     "sha256",
     env.SESSION_SECRET,
     Buffer.alloc(0),
     Buffer.from("bc-mfa-enc"),
     32,
-  ) as Buffer;
+  ));
 }
 
 export function encryptSecret(plain: string): Buffer {
