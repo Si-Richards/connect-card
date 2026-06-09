@@ -133,12 +133,32 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 export const api = {
   // --------- Auth ---------
   login: (email: string, password: string) =>
-    request<{ ok: true }>("/auth/login", {
+    request<{ next: "verify" | "enroll" }>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
+  mfaEnrollStart: () =>
+    request<{ otpauthUrl: string; secret: string; qrDataUrl: string }>("/auth/mfa/enroll/start", {
+      method: "POST",
+    }),
+  mfaEnrollConfirm: (code: string) =>
+    request<{ recoveryCodes: string[] }>("/auth/mfa/enroll/confirm", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    }),
+  mfaVerify: (code: string) =>
+    request<{ ok: true }>("/auth/mfa/verify", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    }),
+  mfaRegenerateRecovery: (password: string) =>
+    request<{ recoveryCodes: string[] }>("/auth/mfa/recovery/regenerate", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    }),
   logout: () => request<{ ok: true }>("/auth/logout", { method: "POST" }),
-  me: () => request<{ user: SessionUser }>("/auth/me"),
+  me: () => request<{ user: SessionUser; mfaEnrolledAt: string | null }>("/auth/me"),
+
 
   // --------- Employees ---------
   listEmployees: () => request<{ employees: Employee[] }>("/employees"),

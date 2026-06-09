@@ -207,6 +207,97 @@ function SettingsPage() {
           </button>
         </div>
       </form>
+
+      <MfaPanel />
     </div>
   );
 }
+
+function MfaPanel() {
+  const meQ = useQuery({ queryKey: ["auth-me"], queryFn: () => api.me() });
+  const [password, setPassword] = useState("");
+  const [codes, setCodes] = useState<string[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  const regenM = useMutation({
+    mutationFn: () => api.mfaRegenerateRecovery(password),
+    onSuccess: ({ recoveryCodes }) => {
+      setCodes(recoveryCodes);
+      setPassword("");
+      setErr(null);
+    },
+    onError: () => setErr("Could not regenerate. Check your password."),
+  });
+
+  const enrolledAt = meQ.data?.mfaEnrolledAt;
+
+  return (
+    <section className="rounded-lg border border-border bg-card p-5 space-y-4">
+      <header>
+        <h2 className="text-lg font-semibold">Two-factor authentication</h2>
+        <p className="text-sm text-muted-foreground">
+          {enrolledAt
+            ? `Enabled since ${new Date(enrolledAt).toLocaleDateString()}.`
+            : "Not enabled yet."}
+        </p>
+      </header>
+
+      {enrolledAt && !codes && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            regenM.mutate();
+          }}
+          className="space-y-3"
+        >
+          <p className="text-sm text-muted-foreground">
+            Generate a fresh set of 10 recovery codes. Your previous codes will stop working.
+            Re-enter your password to confirm.
+          </p>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            placeholder="Current password"
+            autoComplete="current-password"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          />
+          {err && <p className="text-xs text-destructive">{err}</p>}
+          <button
+            type="submit"
+            disabled={regenM.isPending || !password}
+            className="rounded-md border border-input bg-background px-4 py-2 text-sm hover:bg-accent disabled:opacity-60"
+          >
+            {regenM.isPending ? "Generating…" : "Regenerate recovery codes"}
+          </button>
+        </form>
+      )}
+
+      {codes && (
+        <div className="space-y-3">
+          <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+            Save these now — they won't be shown again.
+          </div>
+          <div className="grid grid-cols-2 gap-2 font-mono text-sm">
+            {codes.map((c) => (
+              <div key={c} className="rounded-md border border-border bg-background px-2 py-1.5 text-center">
+                {c}
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              navigator.clipboard.writeText(codes.join("\n")).catch(() => {});
+            }}
+            className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+          >
+            Copy all
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
