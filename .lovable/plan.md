@@ -1,67 +1,44 @@
-# Fix: Google Wallet "something went wrong"
+# Share vCard via Web Share API
 
-## Root cause
+Yes — modern browsers (iOS Safari, Android Chrome, most desktop Chromium) support sharing files through `navigator.share({ files: [...] })`. We can fetch the signed `.vcf` from `/api/public/vcard/:publicId` and hand it to the OS share sheet, so the recipient gets a real contact file they can open in Contacts/Phone/Mail directly — much nicer than sharing a link.
 
-You configured the env vars but never created the **GenericClass** in Google Wallet. When the backend signs a save-to-wallet JWT, it references `GOOGLE_WALLET_CLASS_ID`. Google's save endpoint looks that class up in your issuer account, doesn't find it, and shows a generic "something went wrong" instead of a useful error. Nothing is wrong with the code, the issuer approval, or the image URLs — the class simply has to exist before any object can reference it, and it only needs to be created **once per environment**.
+## Scope
 
-## What I'll add
+Frontend-only change in `src/routes/c.$publicId.tsx`. No backend or business-logic changes — the existing signed vCard endpoint already returns the right `text/vcard` bytes.
 
-A one-shot CLI script in the self-hosted backend that uses the service-account credentials already in your env vars to create (or update) the class via the Google Wallet REST API.
+## UX
 
-### New file: `selfhost/src/scripts/create-google-wallet-class.ts`
+Replace the current single "Share" icon button (which shares only the page URL) with a smarter share control that, in order of preference:
 
-- Reads `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_WALLET_CLASS_ID`, and `GOOGLE_WALLET_SERVICE_ACCOUNT_JSON_BASE64` from env (re-using `selfhost/src/env.ts`).
-- Validates `GOOGLE_WALLET_CLASS_ID` starts with `{issuerId}.` and refuses to continue otherwise (the most common copy/paste mistake).
-- Mints a short-lived OAuth access token from the service account JSON (RS256 JWT → `https://oauth2.googleapis.com/token`, scope `https://www.googleapis.com/auth/wallet_object.issuer`).
-- `GET https://walletobjects.googleapis.com/walletobjects/v1/genericClass/{classId}`:
-  - `200` → class already exists, print "OK, nothing to do" and exit 0.
-  - `404` → `POST .../genericClass` with a minimal body (`id`, `classTemplateInfo` left at defaults). On success print "Created".
-  - Anything else → print Google's error body verbatim and exit 1, so configuration mistakes are diagnosable.
-- No new dependencies — `jsonwebtoken` is already in `selfhost/package.json` for the save-URL signing flow, and `fetch` is built in.
+1. **Share the vCard file** — if `navigator.canShare({ files: [vcf] })` is true, call `navigator.share({ files: [vcf], title, text })`. This is the new primary path on iOS/Android.
+2. **Share the link** — if file share isn't supported but `navigator.share` exists, fall back to `navigator.share({ title, url })` (current behaviour).
+3. **Copy link** — if no Web Share at all, keep the existing "Copy link" button as the sole option.
 
-### `selfhost/package.json`
+The existing "Copy link" button stays as a secondary action on all platforms so users always have a way to grab the URL.
 
-Add a script entry so the operator runs it as a normal npm command:
+Button label: **"Share contact"** with the `Share2` icon. While the file is being fetched, show "Preparing…" to cover the network round-trip.
 
-```json
-"wallet:create-google-class": "tsx src/scripts/create-google-wallet-class.ts"
-```
+## Technical details
 
-### `INSTALL.md` (Google Wallet section)
+In `WalletButtons`' sibling area (the share row near the bottom of `CardPage`):
 
-Replace the "create the class with curl" paragraph with:
+- Add a small helper that:
+  - `fetch(vcfUrl)` → `blob()` → `new File([blob], '${slug-or-name}.vcf', { type: 'text/vcard' })`
+  - Tests `navigator.canShare?.({ files: [file] })`
+  - Calls `navigator.share(...)` and swallows `AbortError` (user cancelled).
+- Replace the current `Share2` button's `onClick` with this helper.
+- Keep the visibility guard: only render the share button if `"share" in navigator`. Copy-link button stays unconditional.
+- Filename: use `${e.full_name.replace(/\s+/g, '-')}.vcf` for a friendly download name, falling back to `${e.public_id}.vcf`.
+- No new dependencies. No changes to `selfhost/` or any route loader.
 
-```bash
-cd /opt/connect-card/selfhost
-sudo -u bcuser npm run wallet:create-google-class
-```
+## Notes / caveats
 
-Note that the script is idempotent and safe to re-run.
-
-## What you'll do on the VPS afterwards
-
-```bash
-cd /opt/connect-card/selfhost
-git pull
-npm install            # no new deps, but keeps lockfile consistent
-npm run build
-sudo -u bcuser npm run wallet:create-google-class
-sudo systemctl restart business-card
-```
-
-Then reload a card page, tap **Add to Google Wallet**, and it should open the standard preview screen.
-
-## If it still fails after the class is created
-
-The script prints Google's exact error body, which will tell us which of the remaining edge cases it is — almost always one of:
-
-- `GOOGLE_WALLET_CLASS_ID` is not prefixed with your issuer ID (e.g. `cardkit_v1` instead of `3388000000012345678.cardkit_v1`).
-- Service-account email isn't linked under **Users** in the Google Pay & Wallet Console for that issuer.
-- Wallet API not enabled on the Google Cloud project the service account belongs to.
-
-We can address whichever the script surfaces in a follow-up.
+- File sharing requires HTTPS (already the case in production).
+- Desktop Safari and Firefox don't support `canShare({ files })` — they'll automatically fall through to URL share or copy-link.
+- The vCard endpoint requires the signed token already present in `tokens.vcard`, so no auth changes.
 
 ## Out of scope
 
-- No changes to `selfhost/src/lib/wallet-google.ts`, the save-URL flow, the QR code, or the SPA. The pass payload is already valid — it just has nowhere to anchor until the class exists.
-- No changes to Apple Wallet, the public card route, or analytics.
+- Adding share for Apple/Google Wallet passes.
+- QR-code image sharing.
+- Any backend or analytics event for "shared" (can add later if you want a `share_click` event type).
