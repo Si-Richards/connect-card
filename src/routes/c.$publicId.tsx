@@ -157,7 +157,7 @@ function CardPage() {
                   Book a meeting
                 </a>
               )}
-              <WalletButtons publicId={e.public_id} brand={brand} tokens={tokens} />
+              <WalletButtons publicId={e.public_id} fullName={e.full_name} brand={brand} tokens={tokens} />
             </div>
 
             <div className="w-full mt-6 divide-y divide-border rounded-xl border border-border overflow-hidden">
@@ -271,10 +271,12 @@ function ContactRow({
 
 function WalletButtons({
   publicId,
+  fullName,
   brand,
   tokens,
 }: {
   publicId: string;
+  fullName: string;
   brand: string;
   tokens: {
     apple: { exp: number; sig: string };
@@ -283,8 +285,11 @@ function WalletButtons({
 }) {
   const [available, setAvailable] = useState<{ apple: boolean; google: boolean } | null>(null);
   const [appleStatus, setAppleStatus] = useState<"idle" | "loading">("idle");
+  const [shareStatus, setShareStatus] = useState<"idle" | "loading">("idle");
+  const [canShare, setCanShare] = useState(false);
 
   useEffect(() => {
+    setCanShare(typeof navigator !== "undefined" && "share" in navigator);
     fetch("/api/public/wallet-status")
       .then((r) => (r.ok ? r.json() : { apple: false, google: false }))
       .then(setAvailable)
@@ -306,8 +311,10 @@ function WalletButtons({
   const appleUrl = `/api/public/wallet/${encodeURIComponent(publicId)}${tokens ? tokenQs(tokens.apple) : ""}`;
   const googleUrl = `/api/public/google-wallet/${encodeURIComponent(publicId)}${tokens ? tokenQs(tokens.google) : ""}`;
 
-  const onAppleClick = async (e: React.MouseEvent) => {
-    e.preventDefault();
+  const safeFileName = (fullName || publicId).replace(/[^\w\-]+/g, "-");
+
+  const onAppleClick = async (ev: React.MouseEvent) => {
+    ev.preventDefault();
     setAppleStatus("loading");
     try {
       const res = await fetch(appleUrl);
@@ -319,7 +326,7 @@ function WalletButtons({
       const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = objectUrl;
-      a.download = `${publicId}.pkpass`;
+      a.download = `${safeFileName}.pkpass`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -329,18 +336,63 @@ function WalletButtons({
     }
   };
 
+  const onAppleShare = async (ev: React.MouseEvent) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    setShareStatus("loading");
+    const title = `${fullName || "Contact"} — Apple Wallet pass`;
+    try {
+      const res = await fetch(appleUrl);
+      if (res.ok) {
+        const blob = await res.blob();
+        const file = new File([blob], `${safeFileName}.pkpass`, {
+          type: "application/vnd.apple.pkpass",
+        });
+        const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+        if (nav.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title });
+          return;
+        }
+      }
+      try {
+        await navigator.share({ title, url: new URL(appleUrl, window.location.origin).toString() });
+      } catch (err: any) {
+        if (err?.name !== "AbortError") throw err;
+      }
+    } catch (err: any) {
+      if (err?.name === "AbortError") return;
+    } finally {
+      setShareStatus("idle");
+    }
+  };
+
   return (
     <>
       {available.apple && (
-        <a
-          href={appleUrl}
-          onClick={onAppleClick}
-          className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium border border-border hover:bg-muted/50 transition-colors"
-          style={{ borderColor: brand }}
-        >
-          <Wallet className="w-4 h-4" />
-          {appleStatus === "loading" ? "Preparing pass…" : "Add to Apple Wallet"}
-        </a>
+        <div className="flex items-center gap-2">
+          <a
+            href={appleUrl}
+            onClick={onAppleClick}
+            className="flex-1 flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium border border-border hover:bg-muted/50 transition-colors"
+            style={{ borderColor: brand }}
+          >
+            <Wallet className="w-4 h-4" />
+            {appleStatus === "loading" ? "Preparing pass…" : "Add to Apple Wallet"}
+          </a>
+          {canShare && (
+            <button
+              type="button"
+              onClick={onAppleShare}
+              disabled={shareStatus === "loading"}
+              aria-label="Share Apple Wallet pass"
+              title="Share pass (AirDrop, Messages, Mail…)"
+              className="inline-flex items-center justify-center rounded-xl px-3 py-3 border border-border hover:bg-muted/50 transition-colors disabled:opacity-60"
+              style={{ borderColor: brand }}
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       )}
       {available.google && (
         <a
