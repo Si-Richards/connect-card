@@ -1,28 +1,20 @@
-# Share vCard + Apple Wallet pass via Web Share API
+# Apple Wallet Pass — Native Share (AirDrop)
 
-Modern browsers (iOS Safari, Android Chrome, most desktop Chromium) support sharing files through `navigator.share({ files: [...] })`. We use this for both the vCard and the Apple Wallet pass so recipients get real files (contact or pass) they can open directly in Contacts/Wallet.
+Add a share button next to the existing Apple Wallet button in `src/routes/c.$publicId.tsx` that uses the Web Share API to share the `.pkpass` file. On iOS/macOS Safari this surfaces AirDrop, Messages, Mail, etc. automatically.
 
-## vCard share
+## Behavior
 
-Already implemented — fetch signed `.vcf` → `File` → `navigator.share({ files })`. Falls back to URL share on unsupported browsers.
-
-## Apple Wallet pass share (new)
-
-Add a small icon-only **share** button next to the existing "Add to Apple Wallet" button.
-
-- Fetch `/api/public/wallet/:publicId` (`.pkpass`) as a blob, wrap it in `File` with type `application/vnd.apple.pkpass` and name `${full_name}.pkpass`.
-- If `navigator.canShare({ files: [file] })` is true, share the file. On iOS/macOS Safari this opens the system share sheet with **AirDrop, Messages, Mail, etc.**
-- If file share isn't supported, fall back to sharing the signed pass URL.
-- Swallow `AbortError` (user cancelled share sheet).
-- Show a brief loading state while the pass is being fetched.
+1. Render share button only when `navigator.share` exists (feature-detect on mount to avoid SSR mismatch).
+2. On tap:
+   - Fetch `/api/public/wallet/:publicId` → blob
+   - Wrap blob in `new File([blob], "${fullName}.pkpass", { type: "application/vnd.apple.pkpass" })`
+   - If `navigator.canShare?.({ files: [file] })` → `navigator.share({ files: [file], title: "${fullName} — Apple Wallet pass" })`
+   - Else fallback: `navigator.share({ title, url: signedPassUrl })`
+3. Loading state: button shows spinner + "Preparing…" while fetching.
+4. Swallow `AbortError` (user cancelled). Surface other errors via existing toast.
 
 ## Scope
 
-Frontend-only change in `src/routes/c.$publicId.tsx`.
-- Update `WalletButtons` to accept `fullName` prop (needed for pass filename + share title).
-- Add a sibling `onClick` share handler next to the Apple Wallet button (only when `available.apple && "share" in navigator`).
-- No backend changes.
-
-## Google Wallet
-
-Skipped for now — Google Wallet passes are save-link URLs, not files, so AirDrop isn't relevant here. Can be added later if needed.
+- Frontend-only change in `src/routes/c.$publicId.tsx` (and the `WalletButtons` component already receiving `fullName`).
+- No backend, no new routes, no new deps.
+- Google Wallet share remains skipped.
