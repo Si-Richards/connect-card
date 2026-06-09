@@ -213,14 +213,30 @@ function CardPage() {
                 {typeof navigator !== "undefined" && "share" in navigator && (
                   <button
                     onClick={async () => {
+                      const safeName = (e.full_name || e.public_id).replace(/\s+/g, "-");
+                      try {
+                        const res = await fetch(vcfUrl);
+                        if (res.ok) {
+                          const blob = await res.blob();
+                          const file = new File([blob], `${safeName}.vcf`, { type: "text/vcard" });
+                          const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+                          if (nav.canShare?.({ files: [file] })) {
+                            await navigator.share({ files: [file], title: e.full_name, text: e.full_name });
+                            return;
+                          }
+                        }
+                      } catch (err: any) {
+                        if (err?.name === "AbortError") return;
+                      }
                       try { await navigator.share({ title: e.full_name, url: shareUrl }); } catch {}
                     }}
                     className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium border border-border bg-background hover:bg-muted transition-colors"
-                    aria-label="Share"
+                    aria-label="Share contact"
                   >
                     <Share2 className="w-4 h-4" />
                   </button>
                 )}
+
               </div>
             </div>
           </div>
